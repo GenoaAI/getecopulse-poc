@@ -105,11 +105,13 @@ class BuildingAnalyzer:
     # Step 2 — Building footprint (OpenStreetMap Overpass)
     # ------------------------------------------------------------------
 
-    def fetch_building_footprint(self, lat: float, lon: float) -> dict:
+    def fetch_building_footprint(self, lat: float, lon: float, address: str = "") -> dict:
         """
-        Query OSM Overpass for the building polygon at the given point.
-        Returns area_m2, centroid, and optimal satellite zoom.
-        Falls back gracefully if no building is found.
+        Fetch the building polygon for the given location.
+        Strategy (in order):
+          1. Nominatim — search by address, returns the OSM polygon directly (most reliable)
+          2. Overpass  — query buildings in radius, select the one containing the point
+          3. Fallback  — return geocoded point with zoom=20 (no polygon)
         """
         print("[2/5] Fetching building footprint from OSM...")
         ov = settings.overpass
@@ -120,8 +122,58 @@ class BuildingAnalyzer:
             "centroid_lon": lon,
             "zoom": 20,
             "bbox": None,
+            "polygon_coords": [],
         }
 
+        # ------------------------------------------------------------------
+        # Strategy 1 — Nominatim: geocoder returns the OSM polygon directly
+        # ------------------------------------------------------------------
+        if address:
+            result = self._footprint_from_nominatim(address, lat, lon, ov)
+            if result:
+                return result
+
+        # ------------------------------------------------------------------
+        # Strategy 2 — Overpass: find buildings in radius, pick the best one
+        # ------------------------------------------------------------------
+        result = self._footprint_from_overpass(lat, lon, ov)
+        if result:
+            return result
+
+        print("    [WARN] No building polygon found — using geocoded point as fallback")
+        return FALLBACK
+
+    def _footprint_from_nominatim(self, address: str, lat: float, lon: float, ov) -> dict | None:
+        """Query Nominatim for the address and return its polygon if available."""
+        NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+        headers = {"User-Agent": "GetEcoPulse/1.0 (energy audit PoC; contact@getecopulse.fr)"}
+        params  = {"q": address, "format": "geojson", "polygon_geojson": 1, "limit": 5}
+        try:
+            resp = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=15)
+            resp.raise_for_status()
+            features = resp.json().get("features", [])
+        except Exception as exc:
+            print(f"    [WARN] Nominatim request failed: {exc}")
+            return None
+
+        for feat in features:
+            geom = feat.get("geometry", {})
+            if geom.get("type") == "Polygon":
+                coords = geom["coordinates"][0]          # outer ring [[lon,lat], ...]
+                nodes_latlon = [(c[1], c[0]) for c in coords]
+                return self._build_footprint_result(nodes_latlon, coords, ov, source="nominatim")
+            if geom.get("type") == "MultiPolygon":
+                # pick the largest ring
+                all_rings = [ring for poly in geom["coordinates"] for ring in poly]
+                best_ring = max(all_rings, key=lambda r: _polygon_area_m2([(c[1], c[0]) for c in r]))
+                nodes_latlon = [(c[1], c[0]) for c in best_ring]
+                return self._build_footprint_result(nodes_latlon, best_ring, ov, source="nominatim")
+
+        print("    [INFO] Nominatim returned no polygon — trying Overpass")
+        return None
+
+    def _footprint_from_overpass(self, lat: float, lon: float, ov) -> dict | None:
+        """Query Overpass for building ways near the point and pick the best one."""
         query = (
             f"[out:json][timeout:15];"
             f"way[\"building\"](around:{ov.search_radius_m},{lat},{lon});"
@@ -136,55 +188,56 @@ class BuildingAnalyzer:
             resp.raise_for_status()
             elements = resp.json().get("elements", [])
         except Exception as exc:
-            print(f"    [WARN] Overpass request failed: {exc} — using fallback")
-            return FALLBACK
+            print(f"    [WARN] Overpass request failed: {exc}")
+            return None
 
         if not elements:
-            print("    [WARN] No building found in OSM — using fallback")
-            return FALLBACK
+            return None
 
         def _elem_area(e):
-            nodes = [(n["lat"], n["lon"]) for n in e["geometry"]]
-            return _polygon_area_m2(nodes)
+            return _polygon_area_m2([(n["lat"], n["lon"]) for n in e["geometry"]])
 
-        # Priority 1: building that geometrically contains the geocoded point
-        # (handles addresses on the street outside but part of the site)
+        # Priority: building that contains the geocoded point; else largest
         containing = [e for e in elements
                       if _point_in_polygon(lat, lon,
                                            [(n["lat"], n["lon"]) for n in e["geometry"]])]
         if containing:
             best = max(containing, key=_elem_area)
-            print(f"    -> {len(containing)} building(s) contain the geocoded point — using largest")
+            print(f"    [Overpass] {len(containing)} building(s) contain the point — using largest")
         else:
-            # Priority 2: largest building in the search radius
             best = max(elements, key=_elem_area)
-            print(f"    -> Geocoded point outside all buildings — using largest of {len(elements)} found")
+            print(f"    [Overpass] Point outside all buildings — using largest of {len(elements)}")
 
-        nodes = [(n["lat"], n["lon"]) for n in best["geometry"]]
-        area_m2   = _polygon_area_m2(nodes)
-        c_lat, c_lon = _polygon_centroid(best["geometry"])
-
-        lats = [n["lat"] for n in best["geometry"]]
-        lons = [n["lon"] for n in best["geometry"]]
-        bbox = {"min_lat": min(lats), "max_lat": max(lats),
-                "min_lon": min(lons), "max_lon": max(lons)}
-
-        zoom = _optimal_zoom(c_lat, bbox, ov.image_padding_factor,
-                             ov.zoom_min, ov.zoom_max)
-
-        # GeoJSON uses [lon, lat] order — convert here once
+        nodes_latlon   = [(n["lat"], n["lon"]) for n in best["geometry"]]
         polygon_coords = [[n["lon"], n["lat"]] for n in best["geometry"]]
+        return self._build_footprint_result(nodes_latlon, polygon_coords, ov, source="osm")
 
-        result = {
-            "source": "osm",
+    def _build_footprint_result(
+        self,
+        nodes_latlon: list[tuple[float, float]],
+        polygon_coords: list,   # [[lon, lat], ...] for GeoJSON
+        ov,
+        source: str,
+    ) -> dict:
+        """Compute area, centroid, bbox and zoom from polygon nodes."""
+        area_m2   = _polygon_area_m2(nodes_latlon)
+        c_lat     = sum(n[0] for n in nodes_latlon) / len(nodes_latlon)
+        c_lon     = sum(n[1] for n in nodes_latlon) / len(nodes_latlon)
+        lats      = [n[0] for n in nodes_latlon]
+        lons      = [n[1] for n in nodes_latlon]
+        bbox      = {"min_lat": min(lats), "max_lat": max(lats),
+                     "min_lon": min(lons), "max_lon": max(lons)}
+        zoom      = _optimal_zoom(c_lat, bbox, ov.image_padding_factor, ov.zoom_min, ov.zoom_max)
+        result    = {
+            "source": source,
             "area_m2": round(area_m2, 1),
             "centroid_lat": round(c_lat, 7),
             "centroid_lon": round(c_lon, 7),
             "zoom": zoom,
             "bbox": bbox,
-            "polygon_coords": polygon_coords,  # [lon, lat] pairs ready for GeoJSON
+            "polygon_coords": polygon_coords,
         }
-        print(f"    -> OSM area: {result['area_m2']} m2  |  zoom: {zoom}  |  centroid: ({c_lat:.5f}, {c_lon:.5f})")
+        print(f"    [{source}] area: {result['area_m2']} m2  |  zoom: {zoom}  |  centroid: ({c_lat:.5f}, {c_lon:.5f})")
         return result
 
     # ------------------------------------------------------------------
@@ -198,7 +251,7 @@ class BuildingAnalyzer:
           - the geocoded address point
         """
         geo      = self.get_coordinates(address)
-        footprint = self.fetch_building_footprint(geo["lat"], geo["lon"])
+        footprint = self.fetch_building_footprint(geo["lat"], geo["lon"], address=address)
 
         features = []
 
@@ -363,7 +416,7 @@ class BuildingAnalyzer:
         geo = self.get_coordinates(address)
         lat, lon = geo["lat"], geo["lon"]
 
-        footprint   = self.fetch_building_footprint(lat, lon)
+        footprint   = self.fetch_building_footprint(lat, lon, address=address)
         image_bytes = self.fetch_satellite_image(
             footprint["centroid_lat"], footprint["centroid_lon"], footprint["zoom"]
         )
