@@ -161,13 +161,15 @@ class BuildingAnalyzer:
             if geom.get("type") == "Polygon":
                 coords = geom["coordinates"][0]          # outer ring [[lon,lat], ...]
                 nodes_latlon = [(c[1], c[0]) for c in coords]
-                return self._build_footprint_result(nodes_latlon, coords, ov, source="nominatim")
+                result = self._build_footprint_result(nodes_latlon, coords, ov, source="nominatim")
+                return self._maybe_refine_with_buildings(result, nodes_latlon, ov)
             if geom.get("type") == "MultiPolygon":
                 # pick the largest ring
                 all_rings = [ring for poly in geom["coordinates"] for ring in poly]
                 best_ring = max(all_rings, key=lambda r: _polygon_area_m2([(c[1], c[0]) for c in r]))
                 nodes_latlon = [(c[1], c[0]) for c in best_ring]
-                return self._build_footprint_result(nodes_latlon, best_ring, ov, source="nominatim")
+                result = self._build_footprint_result(nodes_latlon, best_ring, ov, source="nominatim")
+                return self._maybe_refine_with_buildings(result, nodes_latlon, ov)
 
         print("    [INFO] Nominatim returned no polygon — trying Overpass")
         return None
@@ -212,6 +214,90 @@ class BuildingAnalyzer:
         polygon_coords = [[n["lon"], n["lat"]] for n in best["geometry"]]
         return self._build_footprint_result(nodes_latlon, polygon_coords, ov, source="osm")
 
+    def _maybe_refine_with_buildings(
+        self,
+        base_result: dict,
+        site_polygon: list[tuple[float, float]],
+        ov,
+    ) -> dict:
+        """
+        If the Nominatim parcel is larger than the threshold, replace its area_m2
+        with the sum of individual building footprints found by Overpass inside the
+        site boundary. The satellite image is still centred/zoomed on the full parcel
+        so the whole site is visible.
+        """
+        if not base_result.get("bbox"):
+            return base_result
+        parcel_area = base_result["area_m2"] or 0
+        if parcel_area <= ov.site_area_threshold_m2:
+            return base_result
+
+        print(f"    [INFO] Large parcel ({parcel_area:.0f} m2 > threshold {ov.site_area_threshold_m2} m2)"
+              " — querying individual buildings via Overpass...")
+        buildings = self._query_buildings_in_bbox(base_result["bbox"], site_polygon, ov)
+
+        if not buildings:
+            print("    [WARN] No individual buildings found — keeping parcel area as estimate")
+            return base_result
+
+        total_roof = sum(b["area_m2"] for b in buildings)
+        print(f"    [Overpass] {len(buildings)} building(s) inside site — total roof: {total_roof:.0f} m2")
+
+        base_result["area_m2"]       = round(total_roof, 1)
+        base_result["site_area_m2"]  = round(parcel_area, 1)
+        base_result["building_count"] = len(buildings)
+        base_result["buildings"]     = buildings
+        return base_result
+
+    def _query_buildings_in_bbox(
+        self,
+        bbox: dict,
+        site_polygon: list[tuple[float, float]],
+        ov,
+    ) -> list[dict]:
+        """
+        Query Overpass for all way["building"] elements inside *bbox*,
+        then keep only those whose centroid lies within *site_polygon*
+        (point-in-polygon guard against buildings that touch the bbox edge).
+        Returns a list of {nodes_latlon, polygon_coords, area_m2} dicts.
+        """
+        s, w, n, e = bbox["min_lat"], bbox["min_lon"], bbox["max_lat"], bbox["max_lon"]
+        query = f"[out:json][timeout:30];way[\"building\"]({s},{w},{n},{e});out geom;"
+        headers = {
+            "User-Agent": "GetEcoPulse/1.0 (energy audit PoC; contact@getecopulse.fr)",
+            "Accept": "application/json",
+        }
+        try:
+            resp = requests.get(ov.api_url, params={"data": query}, headers=headers, timeout=35)
+            resp.raise_for_status()
+            elements = resp.json().get("elements", [])
+        except Exception as exc:
+            print(f"    [WARN] Overpass bbox query failed: {exc}")
+            return []
+
+        results = []
+        for elem in elements:
+            if not elem.get("geometry"):
+                continue
+            nodes = [(n["lat"], n["lon"]) for n in elem["geometry"]]
+            if len(nodes) < 3:
+                continue
+            # Centroid of this building
+            c_lat = sum(n[0] for n in nodes) / len(nodes)
+            c_lon = sum(n[1] for n in nodes) / len(nodes)
+            # Keep only buildings whose centroid is inside the Nominatim site polygon
+            if not _point_in_polygon(c_lat, c_lon, site_polygon):
+                continue
+            area = _polygon_area_m2(nodes)
+            if area < 50:   # ignore sheds, bike shelters, etc.
+                continue
+            results.append({
+                "nodes_latlon":   nodes,
+                "polygon_coords": [[pt["lon"], pt["lat"]] for pt in elem["geometry"]],
+                "area_m2":        round(area, 1),
+            })
+        return results
+
     def _build_footprint_result(
         self,
         nodes_latlon: list[tuple[float, float]],
@@ -254,8 +340,39 @@ class BuildingAnalyzer:
         footprint = self.fetch_building_footprint(geo["lat"], geo["lon"], address=address)
 
         features = []
+        buildings = footprint.get("buildings", [])
 
-        if footprint["source"] == "osm":
+        if buildings:
+            # Large-site mode: site boundary (Nominatim parcel) + individual buildings (Overpass)
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [footprint["polygon_coords"]],
+                },
+                "properties": {
+                    "label": "site_boundary",
+                    "site_area_m2": footprint.get("site_area_m2"),
+                    "building_count": footprint.get("building_count"),
+                    "total_roof_m2": footprint["area_m2"],
+                    "source": "nominatim",
+                    "zoom_recommended": footprint["zoom"],
+                },
+            })
+            for i, bld in enumerate(buildings, start=1):
+                features.append({
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [bld["polygon_coords"]],
+                    },
+                    "properties": {
+                        "label": f"building_{i}",
+                        "area_m2": bld["area_m2"],
+                        "source": "overpass",
+                    },
+                })
+        elif footprint["source"] in ("osm", "nominatim"):
             features.append({
                 "type": "Feature",
                 "geometry": {
@@ -264,7 +381,7 @@ class BuildingAnalyzer:
                 },
                 "properties": {
                     "area_m2": footprint["area_m2"],
-                    "source": "osm",
+                    "source": footprint["source"],
                     "zoom_recommended": footprint["zoom"],
                 },
             })
@@ -405,12 +522,23 @@ class BuildingAnalyzer:
     # Step 5 — Passport generation
     # ------------------------------------------------------------------
 
-    def generate_passport(self, address: str, naf_sector: str = "NAF_BUREAUX") -> dict:
+    def generate_passport(
+        self,
+        address: str,
+        naf_sector: str = "NAF_BUREAUX",
+        image_uploader=None,
+    ) -> dict:
         """
         Full pipeline (5 steps):
           geocode -> OSM footprint -> satellite image -> climate -> vision
         Surface reference: OSM polygon area when available, Vision estimate as fallback.
         All constants sourced from business_config.yaml via settings.
+
+        Args:
+            image_uploader: optional callable(image_bytes, address) -> str | None
+                            used to upload the satellite image to remote storage
+                            (e.g. supabase_manager.upload_satellite_image).
+                            Keeps BuildingAnalyzer decoupled from any storage backend.
         """
         print("[1/5] Geocoding...")
         geo = self.get_coordinates(address)
@@ -420,6 +548,12 @@ class BuildingAnalyzer:
         image_bytes = self.fetch_satellite_image(
             footprint["centroid_lat"], footprint["centroid_lon"], footprint["zoom"]
         )
+
+        # Upload satellite image to remote storage if a callable was provided
+        satellite_url: str | None = None
+        if image_uploader is not None:
+            satellite_url = image_uploader(image_bytes, address)
+
         climate = self.fetch_climate_data(lat, lon)
         roof    = self.analyze_roof_with_vision(image_bytes)
 
@@ -450,7 +584,9 @@ class BuildingAnalyzer:
             "physical_data": {
                 "footprint": {
                     "source": footprint["source"],
-                    "area_m2": footprint["area_m2"],
+                    "area_m2": footprint["area_m2"],          # rooftop area (sum of buildings if large site)
+                    "site_area_m2": footprint.get("site_area_m2"),   # Nominatim parcel area (large sites only)
+                    "building_count": footprint.get("building_count"),
                     "centroid": {
                         "lat": footprint["centroid_lat"],
                         "lon": footprint["centroid_lon"],
@@ -482,7 +618,7 @@ class BuildingAnalyzer:
                 "thermal_assessment": thermal,
             },
             "financial_projection": financials,
-            "satellite_image_url": None,  # populated by Supabase Storage in production
+            "satellite_image_url": satellite_url,  # set by image_uploader if provided
         }
 
 

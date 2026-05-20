@@ -22,6 +22,7 @@ overpass:
   image_padding_factor: 1.3   # marge autour de la bounding box (30%)
   zoom_min: 16
   zoom_max: 20
+  site_area_threshold_m2: 15000   # above this, Nominatim parcel -> Overpass buildings sum
 
 thermal:
   base_loss_by_roof_type:
