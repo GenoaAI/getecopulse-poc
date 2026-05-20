@@ -143,10 +143,13 @@ class BuildingAnalyzer:
             print("    [WARN] No building found in OSM — using fallback")
             return FALLBACK
 
-        # Pick the building whose centroid is closest to our geocoded point
-        best = min(elements, key=lambda e: _point_distance(
-            lat, lon, *_polygon_centroid(e["geometry"])
-        ))
+        # Pick the largest building among those found (most relevant for industrial sites)
+        # where the geocoded point (entrance) can be far from the main building's centroid
+        def _elem_area(e):
+            nodes = [(n["lat"], n["lon"]) for n in e["geometry"]]
+            return _polygon_area_m2(nodes)
+
+        best = max(elements, key=_elem_area)
 
         nodes = [(n["lat"], n["lon"]) for n in best["geometry"]]
         area_m2   = _polygon_area_m2(nodes)
@@ -435,15 +438,20 @@ def _polygon_centroid(geometry: list) -> tuple[float, float]:
 
 
 def _polygon_area_m2(nodes: list[tuple[float, float]]) -> float:
-    """Shoelace formula on lat/lon nodes projected to metres."""
+    """
+    Shoelace formula on lat/lon nodes projected to relative metres.
+    Coordinates are shifted to the first node to avoid floating-point
+    cancellation when working with absolute lat/lon values.
+    """
     if len(nodes) < 3:
         return 0.0
-    lat0 = nodes[0][0]
-    # Local metric projection: 1° lat ≈ 111_320 m, 1° lon ≈ 111_320 * cos(lat) m
-    lat_m = math.radians(1) * _EARTH_RADIUS_M          # metres per radian lat
-    lon_m = lat_m * math.cos(math.radians(lat0))        # metres per radian lon
-    xs = [math.radians(n[1]) * lon_m for n in nodes]
-    ys = [math.radians(n[0]) * lat_m for n in nodes]
+    lat0, lon0 = nodes[0]
+    # metres per degree at this latitude
+    lat_m = math.radians(1) * _EARTH_RADIUS_M           # ~111 320 m/°
+    lon_m = lat_m * math.cos(math.radians(lat0))         # ~75 000 m/° at 47°N
+    # Relative coordinates in metres (eliminates catastrophic cancellation)
+    xs = [(n[1] - lon0) * lon_m for n in nodes]
+    ys = [(n[0] - lat0) * lat_m for n in nodes]
     n = len(xs)
     area = abs(sum(xs[i] * ys[(i + 1) % n] - xs[(i + 1) % n] * ys[i] for i in range(n))) / 2
     return area
