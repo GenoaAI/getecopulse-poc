@@ -1,0 +1,5 @@
+requests
+pydantic
+litellm
+google-generativeai
+python-dotenv
