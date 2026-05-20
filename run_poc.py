@@ -8,7 +8,7 @@ import json
 import sys
 from satellite_analyzer import BuildingAnalyzer
 
-TARGET_ADDRESS = "15 rue des Freres Lumieres, 69680 Chassieu, France"
+TARGET_ADDRESS = "Sepro Group, 85000 La Roche-sur-Yon, France"
 NAF_SECTOR     = "NAF_INDUSTRIE"
 
 
@@ -20,7 +20,7 @@ def main():
     print(f"  Sector  : {NAF_SECTOR}")
     print("=" * 60 + "\n")
 
-    analyzer = BuildingAnalyzer(output_dir="output")
+    analyzer = BuildingAnalyzer()
 
     try:
         passport = analyzer.generate_passport(TARGET_ADDRESS, naf_sector=NAF_SECTOR)
@@ -33,6 +33,8 @@ def main():
     print("=" * 60)
     print(json.dumps(passport, indent=2, ensure_ascii=False))
 
+    import os
+    os.makedirs("output", exist_ok=True)
     output_file = "output/passport.json"
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(passport, f, indent=2, ensure_ascii=False)

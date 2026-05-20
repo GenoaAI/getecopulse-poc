@@ -5,3 +5,5 @@ pyyaml
 litellm
 google-generativeai
 python-dotenv
+fastapi
+uvicorn[standard]

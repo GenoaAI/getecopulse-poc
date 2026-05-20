@@ -3,7 +3,6 @@ import base64
 import math
 import requests
 from datetime import datetime
-from pathlib import Path
 
 from pydantic import BaseModel, Field
 import litellm
@@ -74,9 +73,7 @@ class BuildingAnalyzer:
     GEOCODING_URL  = "https://maps.googleapis.com/maps/api/geocode/json"
     OPEN_METEO_URL = "https://archive-api.open-meteo.com/v1/archive"
 
-    def __init__(self, output_dir: str = "output") -> None:
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
+    def __init__(self) -> None:
         os.environ["GEMINI_API_KEY"] = settings.gemini_api_key
         self._economy = EconomicEngine()
 
@@ -178,8 +175,8 @@ class BuildingAnalyzer:
     # Step 3 — Satellite image
     # ------------------------------------------------------------------
 
-    def fetch_satellite_image(self, lat: float, lon: float, zoom: int = 20) -> Path:
-        """Download a high-zoom satellite image centred on the building."""
+    def fetch_satellite_image(self, lat: float, lon: float, zoom: int = 20) -> bytes:
+        """Download a satellite image centred on the building and return raw bytes (no disk write)."""
         print(f"[3/5] Fetching satellite image (zoom={zoom})...")
         params = {
             "center": f"{lat},{lon}",
@@ -190,11 +187,8 @@ class BuildingAnalyzer:
         }
         response = requests.get(self.STATIC_MAP_URL, params=params, timeout=15)
         response.raise_for_status()
-
-        image_path = self.output_dir / f"roof_{lat:.5f}_{lon:.5f}.png"
-        image_path.write_bytes(response.content)
-        print(f"    -> Saved to {image_path} ({len(response.content) // 1024} KB)")
-        return image_path
+        print(f"    -> {len(response.content) // 1024} KB in memory")
+        return response.content
 
     # ------------------------------------------------------------------
     # Step 3 — Climate data (Open-Meteo — free, no API key required)
@@ -242,12 +236,10 @@ class BuildingAnalyzer:
     # Step 4 — Vision analysis (LiteLLM + Gemini)
     # ------------------------------------------------------------------
 
-    def analyze_roof_with_vision(self, image_path: Path) -> RoofAnalysis:
-        """Send the satellite image to Gemini Vision and extract structured roof data."""
+    def analyze_roof_with_vision(self, image_bytes: bytes) -> RoofAnalysis:
+        """Send satellite image bytes to Gemini Vision and extract structured roof data."""
         print("[5/5] Analysing roof with Gemini Vision...")
-
-        with open(image_path, "rb") as f:
-            image_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
+        image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
 
         system_prompt = (
             "You are a professional building energy auditor specialising in remote roof analysis. "
@@ -309,12 +301,12 @@ class BuildingAnalyzer:
         geo = self.get_coordinates(address)
         lat, lon = geo["lat"], geo["lon"]
 
-        footprint  = self.fetch_building_footprint(lat, lon)
-        image_path = self.fetch_satellite_image(
+        footprint   = self.fetch_building_footprint(lat, lon)
+        image_bytes = self.fetch_satellite_image(
             footprint["centroid_lat"], footprint["centroid_lon"], footprint["zoom"]
         )
         climate = self.fetch_climate_data(lat, lon)
-        roof    = self.analyze_roof_with_vision(image_path)
+        roof    = self.analyze_roof_with_vision(image_bytes)
 
         # Surface de référence : OSM si disponible, sinon estimation Vision
         surface_ref = footprint["area_m2"] if footprint["area_m2"] else roof.surface_m2
@@ -375,7 +367,7 @@ class BuildingAnalyzer:
                 "thermal_assessment": thermal,
             },
             "financial_projection": financials,
-            "satellite_image_path": str(image_path),
+            "satellite_image_url": None,  # populated by Supabase Storage in production
         }
 
 
