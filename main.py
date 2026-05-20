@@ -46,6 +46,22 @@ async def health():
     return {"status": "ok", "version": app.version}
 
 
+@app.get("/api/footprint")
+async def get_footprint(address: str):
+    """
+    Return a GeoJSON FeatureCollection with the OSM building polygon
+    and the geocoded address point. Paste the response into geojson.io to visualize.
+    """
+    analyzer = BuildingAnalyzer()
+    try:
+        geojson = await asyncio.to_thread(analyzer.get_building_geojson, address)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Footprint error: {exc}")
+    return geojson
+
+
 @app.post("/api/audit")
 async def audit_building(payload: AuditRequest):
     """

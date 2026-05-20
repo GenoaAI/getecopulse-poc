@@ -160,6 +160,9 @@ class BuildingAnalyzer:
         zoom = _optimal_zoom(c_lat, bbox, ov.image_padding_factor,
                              ov.zoom_min, ov.zoom_max)
 
+        # GeoJSON uses [lon, lat] order — convert here once
+        polygon_coords = [[n["lon"], n["lat"]] for n in best["geometry"]]
+
         result = {
             "source": "osm",
             "area_m2": round(area_m2, 1),
@@ -167,9 +170,56 @@ class BuildingAnalyzer:
             "centroid_lon": round(c_lon, 7),
             "zoom": zoom,
             "bbox": bbox,
+            "polygon_coords": polygon_coords,  # [lon, lat] pairs ready for GeoJSON
         }
         print(f"    -> OSM area: {result['area_m2']} m2  |  zoom: {zoom}  |  centroid: ({c_lat:.5f}, {c_lon:.5f})")
         return result
+
+    # ------------------------------------------------------------------
+    # GeoJSON export (used by /api/footprint)
+    # ------------------------------------------------------------------
+
+    def get_building_geojson(self, address: str) -> dict:
+        """
+        Return a GeoJSON FeatureCollection with:
+          - the building polygon from OSM (if found)
+          - the geocoded address point
+        """
+        geo      = self.get_coordinates(address)
+        footprint = self.fetch_building_footprint(geo["lat"], geo["lon"])
+
+        features = []
+
+        if footprint["source"] == "osm":
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [footprint["polygon_coords"]],
+                },
+                "properties": {
+                    "area_m2": footprint["area_m2"],
+                    "source": "osm",
+                    "zoom_recommended": footprint["zoom"],
+                },
+            })
+
+        features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [geo["lon"], geo["lat"]],
+            },
+            "properties": {
+                "label": "geocoded_point",
+                "address": geo["formatted_address"],
+            },
+        })
+
+        return {
+            "type": "FeatureCollection",
+            "features": features,
+        }
 
     # ------------------------------------------------------------------
     # Step 3 — Satellite image
