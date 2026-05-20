@@ -22,6 +22,14 @@ class FinancialsConfig(BaseModel):
     capex_per_kwp_industrial: float
 
 
+class OverpassConfig(BaseModel):
+    api_url: str
+    search_radius_m: int
+    image_padding_factor: float
+    zoom_min: int
+    zoom_max: int
+
+
 class ThermalConfig(BaseModel):
     base_loss_by_roof_type: dict[str, float]
     cold_climate_threshold_c: float
@@ -55,6 +63,7 @@ class Settings:
         self.solar_physics = SolarPhysicsConfig(**raw["solar_physics"])
         self.financials = FinancialsConfig(**raw["financials"])
         self.energy_profiles: dict[str, int] = raw["energy_profiles"]
+        self.overpass = OverpassConfig(**raw["overpass"])
         self.thermal = ThermalConfig(**raw["thermal"])
 
 

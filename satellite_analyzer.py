@@ -105,15 +105,85 @@ class BuildingAnalyzer:
         return result
 
     # ------------------------------------------------------------------
-    # Step 2 — Satellite image
+    # Step 2 — Building footprint (OpenStreetMap Overpass)
     # ------------------------------------------------------------------
 
-    def fetch_satellite_image(self, lat: float, lon: float) -> Path:
+    def fetch_building_footprint(self, lat: float, lon: float) -> dict:
+        """
+        Query OSM Overpass for the building polygon at the given point.
+        Returns area_m2, centroid, and optimal satellite zoom.
+        Falls back gracefully if no building is found.
+        """
+        print("[2/5] Fetching building footprint from OSM...")
+        ov = settings.overpass
+        FALLBACK = {
+            "source": "fallback",
+            "area_m2": None,
+            "centroid_lat": lat,
+            "centroid_lon": lon,
+            "zoom": 20,
+            "bbox": None,
+        }
+
+        query = (
+            f"[out:json][timeout:15];"
+            f"way[\"building\"](around:{ov.search_radius_m},{lat},{lon});"
+            f"out geom;"
+        )
+        headers = {
+            "User-Agent": "GetEcoPulse/1.0 (energy audit PoC; contact@getecopulse.fr)",
+            "Accept": "application/json",
+        }
+        try:
+            resp = requests.get(ov.api_url, params={"data": query}, headers=headers, timeout=20)
+            resp.raise_for_status()
+            elements = resp.json().get("elements", [])
+        except Exception as exc:
+            print(f"    [WARN] Overpass request failed: {exc} — using fallback")
+            return FALLBACK
+
+        if not elements:
+            print("    [WARN] No building found in OSM — using fallback")
+            return FALLBACK
+
+        # Pick the building whose centroid is closest to our geocoded point
+        best = min(elements, key=lambda e: _point_distance(
+            lat, lon, *_polygon_centroid(e["geometry"])
+        ))
+
+        nodes = [(n["lat"], n["lon"]) for n in best["geometry"]]
+        area_m2   = _polygon_area_m2(nodes)
+        c_lat, c_lon = _polygon_centroid(best["geometry"])
+
+        lats = [n["lat"] for n in best["geometry"]]
+        lons = [n["lon"] for n in best["geometry"]]
+        bbox = {"min_lat": min(lats), "max_lat": max(lats),
+                "min_lon": min(lons), "max_lon": max(lons)}
+
+        zoom = _optimal_zoom(c_lat, bbox, ov.image_padding_factor,
+                             ov.zoom_min, ov.zoom_max)
+
+        result = {
+            "source": "osm",
+            "area_m2": round(area_m2, 1),
+            "centroid_lat": round(c_lat, 7),
+            "centroid_lon": round(c_lon, 7),
+            "zoom": zoom,
+            "bbox": bbox,
+        }
+        print(f"    -> OSM area: {result['area_m2']} m2  |  zoom: {zoom}  |  centroid: ({c_lat:.5f}, {c_lon:.5f})")
+        return result
+
+    # ------------------------------------------------------------------
+    # Step 3 — Satellite image
+    # ------------------------------------------------------------------
+
+    def fetch_satellite_image(self, lat: float, lon: float, zoom: int = 20) -> Path:
         """Download a high-zoom satellite image centred on the building."""
-        print("[2/4] Fetching satellite image...")
+        print(f"[3/5] Fetching satellite image (zoom={zoom})...")
         params = {
             "center": f"{lat},{lon}",
-            "zoom": 20,
+            "zoom": zoom,
             "size": "640x640",
             "maptype": "satellite",
             "key": settings.google_maps_api_key,
@@ -135,7 +205,7 @@ class BuildingAnalyzer:
         Fetch annual solar irradiance and mean temperature from
         Open-Meteo Historical Weather API (last full calendar year).
         """
-        print("[3/4] Fetching climate data from Open-Meteo...")
+        print("[4/5] Fetching climate data from Open-Meteo...")
         end_year = datetime.now().year - 1
         params = {
             "latitude": lat,
@@ -174,7 +244,7 @@ class BuildingAnalyzer:
 
     def analyze_roof_with_vision(self, image_path: Path) -> RoofAnalysis:
         """Send the satellite image to Gemini Vision and extract structured roof data."""
-        print("[4/4] Analysing roof with Gemini Vision...")
+        print("[5/5] Analysing roof with Gemini Vision...")
 
         with open(image_path, "rb") as f:
             image_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
@@ -211,6 +281,7 @@ class BuildingAnalyzer:
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.1,
+            num_retries=3,
         )
 
         raw_json = response.choices[0].message.content.strip()
@@ -229,31 +300,39 @@ class BuildingAnalyzer:
 
     def generate_passport(self, address: str, naf_sector: str = "NAF_BUREAUX") -> dict:
         """
-        Full pipeline: geocode -> satellite image -> climate data -> vision analysis
-        -> energy passport with physical_data and financial_projection blocks.
+        Full pipeline (5 steps):
+          geocode -> OSM footprint -> satellite image -> climate -> vision
+        Surface reference: OSM polygon area when available, Vision estimate as fallback.
         All constants sourced from business_config.yaml via settings.
         """
+        print("[1/5] Geocoding...")
         geo = self.get_coordinates(address)
         lat, lon = geo["lat"], geo["lon"]
 
-        image_path = self.fetch_satellite_image(lat, lon)
-        climate    = self.fetch_climate_data(lat, lon)
-        roof       = self.analyze_roof_with_vision(image_path)
+        footprint  = self.fetch_building_footprint(lat, lon)
+        image_path = self.fetch_satellite_image(
+            footprint["centroid_lat"], footprint["centroid_lon"], footprint["zoom"]
+        )
+        climate = self.fetch_climate_data(lat, lon)
+        roof    = self.analyze_roof_with_vision(image_path)
+
+        # Surface de référence : OSM si disponible, sinon estimation Vision
+        surface_ref = footprint["area_m2"] if footprint["area_m2"] else roof.surface_m2
 
         # ---- Solar potential — all parameters from settings.solar_physics ----
         sp = settings.solar_physics
         obstruction_factor = max(0.6, 1.0 - 0.05 * len(roof.obstructions))
         orientation_factor = _orientation_factor(roof.azimuth_degrees)
 
-        usable_surface     = roof.surface_m2 * sp.usable_surface_ratio * obstruction_factor
-        peak_power_kwp     = (usable_surface / sp.sqm_per_kwp) * orientation_factor
+        usable_surface        = surface_ref * sp.usable_surface_ratio * obstruction_factor
+        peak_power_kwp        = (usable_surface / sp.sqm_per_kwp) * orientation_factor
         annual_production_kwh = peak_power_kwp * climate["dni_annual_kwh_m2"] * sp.performance_ratio
 
         thermal    = _thermal_loss_score(roof.roof_type, climate["temperature_mean_c"])
         financials = self._economy.compute(
             peak_power_kwp=peak_power_kwp,
             annual_production_kwh=annual_production_kwh,
-            roof_surface_m2=roof.surface_m2,
+            roof_surface_m2=surface_ref,
             naf_sector=naf_sector,
         )
 
@@ -262,9 +341,19 @@ class BuildingAnalyzer:
             "address": geo["formatted_address"],
             "coordinates": {"lat": lat, "lon": lon},
             "physical_data": {
+                "footprint": {
+                    "source": footprint["source"],
+                    "area_m2": footprint["area_m2"],
+                    "centroid": {
+                        "lat": footprint["centroid_lat"],
+                        "lon": footprint["centroid_lon"],
+                    },
+                    "zoom_used": footprint["zoom"],
+                },
                 "climate": climate,
                 "roof_analysis": {
-                    "surface_m2": roof.surface_m2,
+                    "surface_m2_vision": roof.surface_m2,
+                    "surface_m2_used": surface_ref,
                     "azimuth_degrees": roof.azimuth_degrees,
                     "roof_type": roof.roof_type,
                     "obstructions": roof.obstructions,
@@ -293,6 +382,48 @@ class BuildingAnalyzer:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+_EARTH_RADIUS_M = 6_378_137.0
+
+
+def _polygon_centroid(geometry: list) -> tuple[float, float]:
+    lats = [n["lat"] for n in geometry]
+    lons = [n["lon"] for n in geometry]
+    return sum(lats) / len(lats), sum(lons) / len(lons)
+
+
+def _polygon_area_m2(nodes: list[tuple[float, float]]) -> float:
+    """Shoelace formula on lat/lon nodes projected to metres."""
+    if len(nodes) < 3:
+        return 0.0
+    lat0 = nodes[0][0]
+    # Local metric projection: 1° lat ≈ 111_320 m, 1° lon ≈ 111_320 * cos(lat) m
+    lat_m = math.radians(1) * _EARTH_RADIUS_M          # metres per radian lat
+    lon_m = lat_m * math.cos(math.radians(lat0))        # metres per radian lon
+    xs = [math.radians(n[1]) * lon_m for n in nodes]
+    ys = [math.radians(n[0]) * lat_m for n in nodes]
+    n = len(xs)
+    area = abs(sum(xs[i] * ys[(i + 1) % n] - xs[(i + 1) % n] * ys[i] for i in range(n))) / 2
+    return area
+
+
+def _point_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Euclidean distance in degrees (good enough for nearby-building selection)."""
+    return math.hypot(lat1 - lat2, lon1 - lon2)
+
+
+def _optimal_zoom(lat: float, bbox: dict, padding: float, z_min: int, z_max: int) -> int:
+    """Compute the highest zoom that fits the bounding box in a 640px image."""
+    lat_span_m = (bbox["max_lat"] - bbox["min_lat"]) * math.radians(1) * _EARTH_RADIUS_M
+    lon_span_m = (bbox["max_lon"] - bbox["min_lon"]) * math.radians(1) * _EARTH_RADIUS_M * math.cos(math.radians(lat))
+    required_m = max(lat_span_m, lon_span_m) * padding
+    if required_m <= 0:
+        return z_max
+    # metres_per_pixel = 2π * R * cos(lat) / (256 * 2^zoom)
+    # 640 * metres_per_pixel >= required_m  →  zoom = log2(2π*R*cos*640 / (256*required))
+    zoom_f = math.log2(2 * math.pi * _EARTH_RADIUS_M * math.cos(math.radians(lat)) * 640 / (256 * required_m))
+    return max(z_min, min(z_max, math.floor(zoom_f)))
+
 
 def _orientation_factor(azimuth: int) -> float:
     """Yield factor based on roof orientation vs. South (cosine approximation)."""
