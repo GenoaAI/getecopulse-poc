@@ -1,5 +1,7 @@
 requests
 pydantic
+pydantic-settings
+pyyaml
 litellm
 google-generativeai
 python-dotenv

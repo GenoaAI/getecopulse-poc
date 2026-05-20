@@ -1,5 +1,5 @@
 """
-GetEcoPulse – Proof of Concept runner
+GetEcoPulse — Proof of Concept runner
 Runs the full building analysis pipeline on a fixed industrial address
 and prints the resulting energy passport as formatted JSON.
 """
@@ -8,20 +8,22 @@ import json
 import sys
 from satellite_analyzer import BuildingAnalyzer
 
-TARGET_ADDRESS = "15 rue des Frères Lumière, 69680 Chassieu, France"
+TARGET_ADDRESS = "15 rue des Freres Lumieres, 69680 Chassieu, France"
+NAF_SECTOR     = "NAF_INDUSTRIE"
 
 
 def main():
     print("=" * 60)
-    print("  GetEcoPulse – Building Energy Passport (PoC)")
+    print("  GetEcoPulse - Building Energy Passport (PoC)")
     print("=" * 60)
-    print(f"  Target: {TARGET_ADDRESS}")
+    print(f"  Address : {TARGET_ADDRESS}")
+    print(f"  Sector  : {NAF_SECTOR}")
     print("=" * 60 + "\n")
 
     analyzer = BuildingAnalyzer(output_dir="output")
 
     try:
-        passport = analyzer.generate_passport(TARGET_ADDRESS)
+        passport = analyzer.generate_passport(TARGET_ADDRESS, naf_sector=NAF_SECTOR)
     except Exception as exc:
         print(f"\n[ERROR] Pipeline failed: {exc}", file=sys.stderr)
         raise

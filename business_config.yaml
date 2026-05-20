@@ -1,0 +1,30 @@
+solar_physics:
+  usable_surface_ratio: 0.85      # structural reserve (edges, walkways)
+  sqm_per_kwp: 5.5                # m² of roof needed per kWp installed (mono-Si panels)
+  performance_ratio: 0.80         # system losses: inverter, wiring, soiling
+
+financials:
+  default_energy_price_kwh: 0.18  # EUR/kWh (French industrial tariff)
+  capex_per_kwp_industrial: 900   # EUR/kWp all-in (supply + install)
+
+energy_profiles:                  # Reference consumption kWh/m²/year by sector
+  NAF_BUREAUX:     150
+  NAF_INDUSTRIE:   300
+  NAF_ENTREPOT:     50
+  NAF_COMMERCE:    200
+  NAF_ENSEIGNEMENT: 120
+  NAF_SANTE:       350
+  NAF_HOTELLERIE:  280
+
+thermal:
+  base_loss_by_roof_type:
+    flat:    0.70   # terrasse souvent sous-isolée
+    gable:   0.50
+    hip:     0.40   # meilleure étanchéité à l'air
+    shed:    0.60
+    complex: 0.65
+    unknown: 0.60
+  cold_climate_threshold_c: 8
+  mild_climate_threshold_c: 13
+  cold_multiplier: 1.3
+  mild_multiplier: 1.1
