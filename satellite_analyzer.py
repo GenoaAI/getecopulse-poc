@@ -143,13 +143,22 @@ class BuildingAnalyzer:
             print("    [WARN] No building found in OSM — using fallback")
             return FALLBACK
 
-        # Pick the largest building among those found (most relevant for industrial sites)
-        # where the geocoded point (entrance) can be far from the main building's centroid
         def _elem_area(e):
             nodes = [(n["lat"], n["lon"]) for n in e["geometry"]]
             return _polygon_area_m2(nodes)
 
-        best = max(elements, key=_elem_area)
+        # Priority 1: building that geometrically contains the geocoded point
+        # (handles addresses on the street outside but part of the site)
+        containing = [e for e in elements
+                      if _point_in_polygon(lat, lon,
+                                           [(n["lat"], n["lon"]) for n in e["geometry"]])]
+        if containing:
+            best = max(containing, key=_elem_area)
+            print(f"    -> {len(containing)} building(s) contain the geocoded point — using largest")
+        else:
+            # Priority 2: largest building in the search radius
+            best = max(elements, key=_elem_area)
+            print(f"    -> Geocoded point outside all buildings — using largest of {len(elements)} found")
 
         nodes = [(n["lat"], n["lon"]) for n in best["geometry"]]
         area_m2   = _polygon_area_m2(nodes)
@@ -455,6 +464,23 @@ def _polygon_area_m2(nodes: list[tuple[float, float]]) -> float:
     n = len(xs)
     area = abs(sum(xs[i] * ys[(i + 1) % n] - xs[(i + 1) % n] * ys[i] for i in range(n))) / 2
     return area
+
+
+def _point_in_polygon(lat_p: float, lon_p: float, nodes: list[tuple[float, float]]) -> bool:
+    """
+    Ray casting algorithm — returns True if (lat_p, lon_p) is inside the polygon.
+    nodes: list of (lat, lon) tuples.
+    """
+    inside = False
+    j = len(nodes) - 1
+    for i, (lat_i, lon_i) in enumerate(nodes):
+        lat_j, lon_j = nodes[j]
+        if ((lon_i > lon_p) != (lon_j > lon_p)) and (
+            lat_p < (lat_j - lat_i) * (lon_p - lon_i) / (lon_j - lon_i) + lat_i
+        ):
+            inside = not inside
+        j = i
+    return inside
 
 
 def _point_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
