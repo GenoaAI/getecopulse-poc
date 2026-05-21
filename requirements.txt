@@ -13,17 +13,8 @@ requests==2.32.3
 httpx==0.27.2
 anyio==4.9.0
 
-# AI — Gemini Vision via LiteLLM (no pandas/numpy = bundle < 150 MB)
-litellm==1.59.10
-# Gemini direct SDK — used for Google Search grounding (plausibility check)
+# AI — Gemini Vision + Search grounding via google-genai direct SDK
 google-genai==2.5.0
-openai==1.60.2
-tiktoken==0.8.0
-regex==2026.5.9
 
 # Supabase — storage + persistence (optional — no-op if env vars absent)
 supabase==2.30.0
-
-# Async HTTP (required by aiohttp + litellm internals)
-aiohttp==3.11.11
-aiohappyeyeballs==2.6.2
