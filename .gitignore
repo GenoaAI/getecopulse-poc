@@ -2,6 +2,12 @@
 .env
 *.env
 
+# Claude Code session data
+.claude/
+
+# Local test scripts
+test_*.py
+
 # Python
 __pycache__/
 *.py[cod]
@@ -20,3 +26,8 @@ output/
 .vscode/
 .idea/
 *.swp
+
+# Frontend — Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
