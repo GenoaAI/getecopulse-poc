@@ -24,7 +24,7 @@ import {
   Award,
 } from "lucide-react";
 import { runAudit, fetchFootprint, type AuditResult } from "@/lib/api";
-import { createClient } from "@/lib/supabase";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
 import CsvUpload from "@/components/CsvUpload";
 
@@ -262,8 +262,10 @@ export default function Home() {
   }, [realDiag]);
 
   // Check Supabase session on mount and listen for auth changes
+  // Guard: Supabase is optional — skip entirely when env vars are absent
   useEffect(() => {
-    const supabase = createClient();
+    if (!isSupabaseConfigured) return;
+    const supabase = createClient()!;
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);

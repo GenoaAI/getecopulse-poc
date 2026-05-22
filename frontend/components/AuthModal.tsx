@@ -18,7 +18,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
   const supabase = createClient();
 
   async function handleMagicLink() {
-    if (!email.trim()) return;
+    if (!email.trim() || !supabase) return;
     setLoading(true);
     setError(null);
 
@@ -39,6 +39,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
   }
 
   async function handleGoogle() {
+    if (!supabase) return;
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
