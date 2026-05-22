@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle, X } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface RealDiagnostic {
   theoretical_annual_consumption_kwh: number;
