@@ -10,7 +10,7 @@ pydantic-settings==2.7.1
 python-dotenv==1.0.1
 PyYAML==6.0.2
 requests==2.32.3
-httpx==0.27.2
+httpx==0.28.1
 anyio==4.9.0
 
 # AI — Gemini Vision + Search grounding via google-genai direct SDK
