@@ -22,9 +22,11 @@ import {
   BarChart2,
   Leaf,
   Award,
+  FileDown,
 } from "lucide-react";
 import { runAudit, fetchFootprint, type AuditResult } from "@/lib/api";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { exportAuditPdf } from "@/lib/pdf-export";
 import AuthModal from "@/components/AuthModal";
 import CsvUpload from "@/components/CsvUpload";
 
@@ -249,6 +251,11 @@ export default function Home() {
   const [showCsvUpload, setShowCsvUpload] = useState(false);
   const [realDiag, setRealDiag]     = useState<AuditResult["diagnostic"] | null>(null);
 
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  // Ref on the results <main> for PDF capture
+  const mainRef = useRef<HTMLElement>(null);
+
   // Ref for auto-scroll to consumption section when real data loads
   const section02Ref = useRef<HTMLElement>(null);
 
@@ -277,6 +284,16 @@ export default function Home() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  async function handleExportPdf() {
+    if (!mainRef.current || !audit) return;
+    setPdfLoading(true);
+    try {
+      await exportAuditPdf(mainRef.current, audit.address);
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   async function handleAnalyse() {
     if (!address.trim()) return;
@@ -372,6 +389,25 @@ export default function Home() {
               )}
               Analyser
             </button>
+
+            {/* PDF export — visible only when audit is ready */}
+            {audit && (
+              <button
+                onClick={handleExportPdf}
+                disabled={pdfLoading}
+                title="Télécharger le rapport PDF"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+                           bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileDown className="w-4 h-4" />
+                )}
+                {pdfLoading ? "Génération…" : "Rapport PDF"}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -446,7 +482,7 @@ export default function Home() {
           RESULTS — 3 narrative sections
       ═══════════════════════════════════════════════════════════════════ */}
       {showResults && (
-        <main className="max-w-6xl mx-auto w-full px-6 py-8 flex flex-col gap-14">
+        <main ref={mainRef} className="max-w-6xl mx-auto w-full px-6 py-8 flex flex-col gap-14">
 
           {/* ────────────────────────────────────────────────────────────
               SECTION 01 — Identité & Emprise
