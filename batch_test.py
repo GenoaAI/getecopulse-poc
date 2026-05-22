@@ -14,6 +14,9 @@ import sys
 import time
 from datetime import datetime
 
+# Canonical source lives in api/ — add it to the path so imports resolve there
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "api"))
+
 from satellite_analyzer import BuildingAnalyzer
 
 # ---------------------------------------------------------------------------
