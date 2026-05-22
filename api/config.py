@@ -56,6 +56,7 @@ class _EnvSettings(BaseSettings):
 
     google_maps_api_key: str
     gemini_api_key: str
+    mapbox_api_key: str
     supabase_url: str | None = None
     supabase_key: str | None = None
 
@@ -69,6 +70,7 @@ class Settings:
         env = _EnvSettings()
         self.google_maps_api_key: str = env.google_maps_api_key
         self.gemini_api_key: str = env.gemini_api_key
+        self.mapbox_api_key: str = env.mapbox_api_key
         self.supabase_url: str | None = env.supabase_url
         self.supabase_key: str | None = env.supabase_key
 

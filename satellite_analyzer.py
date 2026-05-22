@@ -165,8 +165,8 @@ class BuildingAnalyzer:
     All physical and financial constants are read from settings (business_config.yaml).
     """
 
-    STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap"
-    GEOCODING_URL  = "https://maps.googleapis.com/maps/api/geocode/json"
+    MAPBOX_STATIC_URL = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static"
+    GEOCODING_URL     = "https://maps.googleapis.com/maps/api/geocode/json"
     OPEN_METEO_URL = "https://archive-api.open-meteo.com/v1/archive"
 
     def __init__(self) -> None:
@@ -593,16 +593,20 @@ class BuildingAnalyzer:
     # ------------------------------------------------------------------
 
     def fetch_satellite_image(self, lat: float, lon: float, zoom: int = 20) -> bytes:
-        """Download a satellite image centred on the building and return raw bytes (no disk write)."""
-        print(f"[3/5] Fetching satellite image (zoom={zoom})...")
-        params = {
-            "center": f"{lat},{lon}",
-            "zoom": zoom,
-            "size": "640x640",
-            "maptype": "satellite",
-            "key": settings.google_maps_api_key,
-        }
-        response = requests.get(self.STATIC_MAP_URL, params=params, timeout=15)
+        """
+        Download a satellite image centred on the building and return raw bytes (no disk write).
+        Uses Mapbox Static Images API — Google Maps Static is unavailable for EEA accounts.
+        Mapbox coordinate order: lon,lat (reversed vs Google's lat,lon).
+        """
+        print(f"[3/5] Fetching satellite image via Mapbox (zoom={zoom})...")
+        # Mapbox URL format: /lon,lat,zoom/WxH@2x?access_token=...
+        url = (
+            f"{self.MAPBOX_STATIC_URL}"
+            f"/{lon},{lat},{zoom}"
+            f"/640x640@2x"
+            f"?access_token={settings.mapbox_api_key}"
+        )
+        response = requests.get(url, timeout=15)
         response.raise_for_status()
         print(f"    -> {len(response.content) // 1024} KB in memory")
         return response.content
