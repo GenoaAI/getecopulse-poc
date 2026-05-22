@@ -15,15 +15,8 @@ export async function exportAuditPdf(
     import("html2canvas"),
   ]);
 
-  // ── Capture ─────────────────────────────────────────────────────────────
-  const canvas = await html2canvas(mainEl, {
-    scale: 2,                    // retina quality
-    useCORS: true,               // satellite image (external URL)
-    backgroundColor: "#0f172a", // dark background
-    logging: false,
-    scrollX: 0,
-    scrollY: 0,                  // PrintableReport is at absolute top — no scroll offset needed
-  });
+  const pages = Array.from(mainEl.children) as HTMLElement[];
+  if (pages.length === 0) return;
 
   // ── PDF constants (A4 mm) ────────────────────────────────────────────────
   const PAGE_W   = 210;
@@ -32,13 +25,6 @@ export async function exportAuditPdf(
   const HEADER_H = 15;
   const FOOTER_H = 8;
   const CONTENT_W = PAGE_W - 2 * MARGIN;
-  const CONTENT_H = PAGE_H - HEADER_H - FOOTER_H - MARGIN;
-
-  // canvas.width is at 2× scale → divide by 2 for logical pixels
-  const PX_PER_MM  = (canvas.width / 2) / CONTENT_W;
-  const PAGE_PX_H  = CONTENT_H * PX_PER_MM;          // logical px per content area
-  const TOTAL_H_MM = (canvas.height / 2) / PX_PER_MM;
-  const PAGE_COUNT = Math.ceil(TOTAL_H_MM / CONTENT_H);
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
@@ -49,9 +35,19 @@ export async function exportAuditPdf(
   const fileSlug  = address.split(",")[0].trim().replace(/\s+/g, "_");
   const isoDate   = new Date().toISOString().slice(0, 10);
 
-  // ── Pages ────────────────────────────────────────────────────────────────
-  for (let i = 0; i < PAGE_COUNT; i++) {
+  // ── Pages Loop ───────────────────────────────────────────────────────────
+  for (let i = 0; i < pages.length; i++) {
     if (i > 0) pdf.addPage();
+
+    const pageEl = pages[i];
+    const canvas = await html2canvas(pageEl, {
+      scale: 2,                    // retina quality
+      useCORS: true,               // satellite image (external URL)
+      backgroundColor: "#ffffff",  // force white background capture
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+    });
 
     // Header bar
     pdf.setFillColor(15, 23, 42);
@@ -75,27 +71,17 @@ export async function exportAuditPdf(
     pdf.setLineWidth(0.3);
     pdf.line(0, HEADER_H, PAGE_W, HEADER_H);
 
-    // Content slice
-    const srcY = Math.floor(i * PAGE_PX_H * 2);  // ×2 for canvas 2× scale
-    const srcH = Math.min(Math.ceil(PAGE_PX_H * 2), canvas.height - srcY);
-    if (srcH <= 0) break;
+    // Draw page image content
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+    const imgHeight = (canvas.height / canvas.width) * CONTENT_W;
 
-    const slice = document.createElement("canvas");
-    slice.width  = canvas.width;
-    slice.height = srcH;
-    slice.getContext("2d")!.drawImage(
-      canvas, 0, srcY, canvas.width, srcH,
-      0, 0, canvas.width, srcH,
-    );
-
-    const sliceHmm = (srcH / 2) / PX_PER_MM;
     pdf.addImage(
-      slice.toDataURL("image/jpeg", 0.92),
+      imgData,
       "JPEG",
       MARGIN,
       HEADER_H + 1,
       CONTENT_W,
-      sliceHmm,
+      imgHeight,
     );
 
     // Footer bar
@@ -110,7 +96,7 @@ export async function exportAuditPdf(
     pdf.setFontSize(6.5);
     pdf.setTextColor(71, 85, 105);
     pdf.text(`Généré le ${dateStr} — getecopulse.fr`, MARGIN, PAGE_H - 2.5);
-    pdf.text(`${i + 1} / ${PAGE_COUNT}`, PAGE_W - MARGIN, PAGE_H - 2.5, { align: "right" });
+    pdf.text(`${i + 1} / ${pages.length}`, PAGE_W - MARGIN, PAGE_H - 2.5, { align: "right" });
   }
 
   pdf.save(`GetEcoPulse_Audit_${isoDate}_${fileSlug}.pdf`);

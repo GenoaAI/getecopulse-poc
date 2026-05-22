@@ -8,8 +8,10 @@ Aucune autre technologie majeure ne doit être introduite sans validation explic
 - **Hébergement Backend :** **Vercel** (Serverless Functions via `vercel.json`).
 - **Base de données & Auth :** **Supabase** (PostgreSQL, Supabase Auth, Supabase Storage). Interaction via le SDK officiel `supabase-py`.
 - **Frontend (Cible) :** Next.js (App Router), React, TailwindCSS (déployé sur Vercel).
-- **Intelligence Artificielle :** LiteLLM (Modèle cible : Gemini 2.5 Flash).
+- **Intelligence Artificielle / Vision :** SDK officiel `google-genai` (Modèle cible : Gemini 2.5 Flash).
+- **Cartographie & Géolocalisation :** Nominatim / OpenStreetMap pour le géocodage et les emprises au sol, Mapbox Static Images API pour l'imagerie satellite (Google Maps et Google Places sont exclus).
 - **Gestion des configurations :** `pydantic-settings` + `business_config.yaml`.
+
 
 ## 2. Principes de Design (Domain-Driven Design)
 - **Séparation stricte :** La logique métier (calculs physiques, économiques, appel IA) doit rester agnostique. Les routes FastAPI ne doivent être que des "passe-plats" qui appellent les classes métiers (ex: `EconomicEngine`).

@@ -267,14 +267,14 @@ class BuildingAnalyzer:
                 coords = geom["coordinates"][0]          # outer ring [[lon,lat], ...]
                 nodes_latlon = [(c[1], c[0]) for c in coords]
                 result = self._build_footprint_result(nodes_latlon, coords, ov, source="nominatim")
-                return self._maybe_refine_with_buildings(result, nodes_latlon, ov)
+                return self._maybe_refine_with_buildings(result, nodes_latlon, ov, geo_lat=lat, geo_lon=lon)
             if geom.get("type") == "MultiPolygon":
                 # pick the largest ring
                 all_rings = [ring for poly in geom["coordinates"] for ring in poly]
                 best_ring = max(all_rings, key=lambda r: _polygon_area_m2([(c[1], c[0]) for c in r]))
                 nodes_latlon = [(c[1], c[0]) for c in best_ring]
                 result = self._build_footprint_result(nodes_latlon, best_ring, ov, source="nominatim")
-                return self._maybe_refine_with_buildings(result, nodes_latlon, ov)
+                return self._maybe_refine_with_buildings(result, nodes_latlon, ov, geo_lat=lat, geo_lon=lon)
 
         print("    [INFO] Nominatim returned no polygon — trying Overpass")
         return None
@@ -324,13 +324,15 @@ class BuildingAnalyzer:
         base_result: dict,
         site_polygon: list[tuple[float, float]],
         ov,
+        geo_lat: float | None = None,
+        geo_lon: float | None = None,
     ) -> dict:
         """
         If the Nominatim parcel is larger than the threshold, replace its area_m2
         with the sum of individual building footprints found by Overpass inside the
         site boundary.  The satellite image is then re-centred and re-zoomed on the
-        buildings' combined bbox (not the full zone) so the actual rooftops fill the
-        frame rather than showing the entire industrial estate.
+        NEAREST building to the geocoded address point — not the combined bbox of all
+        buildings (which can span hundreds of metres in an industrial zone).
         """
         if not base_result.get("bbox"):
             return base_result
@@ -354,23 +356,30 @@ class BuildingAnalyzer:
         base_result["building_count"] = len(buildings)
         base_result["buildings"]      = buildings
 
-        # Re-centre and re-zoom on the buildings' combined bbox so the satellite
-        # image frames the actual rooftops instead of the whole industrial zone.
-        all_nodes = [n for b in buildings for n in b["nodes_latlon"]]
-        if all_nodes:
-            b_lats = [n[0] for n in all_nodes]
-            b_lons = [n[1] for n in all_nodes]
-            buildings_bbox = {
-                "min_lat": min(b_lats), "max_lat": max(b_lats),
-                "min_lon": min(b_lons), "max_lon": max(b_lons),
-            }
-            c_lat = sum(b_lats) / len(b_lats)
-            c_lon = sum(b_lons) / len(b_lons)
-            zoom  = _optimal_zoom(c_lat, buildings_bbox, ov.image_padding_factor, ov.zoom_min, ov.zoom_max)
-            base_result["centroid_lat"] = round(c_lat, 7)
-            base_result["centroid_lon"] = round(c_lon, 7)
-            base_result["zoom"]         = zoom
-            print(f"    [refine] buildings bbox → zoom: {zoom}  centroid: ({c_lat:.5f}, {c_lon:.5f})")
+        # Re-centre and re-zoom on the NEAREST building to the geocoded address point.
+        # Using the combined bbox of ALL buildings would span the entire industrial zone
+        # and produce a far-too-wide satellite image.
+        ref_lat = geo_lat if geo_lat is not None else base_result["centroid_lat"]
+        ref_lon = geo_lon if geo_lon is not None else base_result["centroid_lon"]
+
+        def _bld_centroid(b: dict) -> tuple[float, float]:
+            lats = [n[0] for n in b["nodes_latlon"]]
+            lons = [n[1] for n in b["nodes_latlon"]]
+            return sum(lats) / len(lats), sum(lons) / len(lons)
+
+        nearest = min(buildings, key=lambda b: _point_distance(ref_lat, ref_lon, *_bld_centroid(b)))
+        n_lats  = [n[0] for n in nearest["nodes_latlon"]]
+        n_lons  = [n[1] for n in nearest["nodes_latlon"]]
+        c_lat, c_lon = _bld_centroid(nearest)
+        near_bbox = {
+            "min_lat": min(n_lats), "max_lat": max(n_lats),
+            "min_lon": min(n_lons), "max_lon": max(n_lons),
+        }
+        zoom = _optimal_zoom(c_lat, near_bbox, ov.image_padding_factor, ov.zoom_min, ov.zoom_max)
+        base_result["centroid_lat"] = round(c_lat, 7)
+        base_result["centroid_lon"] = round(c_lon, 7)
+        base_result["zoom"]         = zoom
+        print(f"    [refine] nearest building -> zoom: {zoom}  centroid: ({c_lat:.5f}, {c_lon:.5f})")
 
         return base_result
 
@@ -618,12 +627,14 @@ class BuildingAnalyzer:
         Download a satellite image centred on the building and return raw bytes (no disk write).
         Uses Mapbox Static Images API — Google Maps Static is unavailable for EEA accounts.
         Mapbox coordinate order: lon,lat (reversed vs Google's lat,lon).
+        Note: @2x shows the same geographic area as @1x at the same zoom level (Mapbox docs),
+        just at 2× pixel density. No zoom correction needed.
         """
         print(f"[3/5] Fetching satellite image via Mapbox (zoom={zoom})...")
         # Mapbox URL format: /lon,lat,zoom/WxH@2x?access_token=...
         url = (
             f"{self.MAPBOX_STATIC_URL}"
-            f"/{lon},{lat},{zoom - 1}"   # -1 vs computed zoom: @2x resolution sits tighter than Google 640px
+            f"/{lon},{lat},{zoom}"
             f"/640x640@2x"
             f"?access_token={settings.mapbox_api_key}"
         )

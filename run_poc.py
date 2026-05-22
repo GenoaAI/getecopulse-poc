@@ -18,6 +18,8 @@ NAF_SECTOR     = "NAF_INDUSTRIE"
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     print("=" * 60)
     print("  GetEcoPulse - Building Energy Passport (PoC)")
     print("=" * 60)

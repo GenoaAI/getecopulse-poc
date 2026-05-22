@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * GetEcoPulse — PrintableReport  (light-theme edition, A4-optimised)
+ * GetEcoPulse — PrintableReport (light-theme edition, A4-optimised)
  *
  * Off-screen component captured by html2canvas → jsPDF.
  *
@@ -127,12 +127,12 @@ function LoadProfileSvg({
 }: AuditResult["diagnostic"]["load_profile"]) {
   const count  = labels.length;
   const maxVal = Math.max(...weekday_kw, ...weekend_kw, 0.01);
-  const H = 100;
+  const H = 76;
   const PW = Math.max(14, Math.floor(720 / count));
   const BW = Math.max(4,  Math.floor(PW * 0.42));
   const W  = count * PW;
   return (
-    <svg width={W} height={H + 22} style={{ display: "block", overflow: "visible" }}>
+    <svg width={W} height={H + 20} style={{ display: "block", overflow: "visible" }}>
       {labels.map((label, i) => {
         const x   = i * PW;
         const wdH = Math.max((weekday_kw[i]  ?? 0) / maxVal * H, 1);
@@ -145,7 +145,7 @@ function LoadProfileSvg({
             <rect x={x + BW + 1}   y={H - weH} width={BW} height={weH}
               fill="#60a5fa" opacity={0.7} rx={1} />
             {(i % 6 === 0) && (
-              <text x={x + BW} y={H + 14} textAnchor="middle" fontSize={9}
+              <text x={x + BW} y={H + 12} textAnchor="middle" fontSize={8}
                 fill="#94a3b8" fontFamily="ui-monospace,monospace">{label}</text>
             )}
           </g>
@@ -157,13 +157,13 @@ function LoadProfileSvg({
 
 function SectionBar({ n: num, title }: { n: string; title: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
       <span style={{
-        fontFamily: "ui-monospace,monospace", fontSize: 11, fontWeight: 700,
+        fontFamily: "ui-monospace,monospace", fontSize: 10, fontWeight: 700,
         color: T.green700, background: T.green50, border: `1px solid ${T.greenBdr}`,
-        borderRadius: 4, padding: "2px 9px", flexShrink: 0,
+        borderRadius: 4, padding: "2px 7px", flexShrink: 0,
       }}>{num}</span>
-      <span style={{ fontSize: 17, fontWeight: 700, color: T.t900 }}>{title}</span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: T.t900 }}>{title}</span>
       <div style={{ flex: 1, height: 1, background: T.border }} />
     </div>
   );
@@ -175,14 +175,27 @@ function Stat({ label, value, sub, accent }: {
   return (
     <div style={{
       background: T.white, border: `1px solid ${T.border}`,
-      borderRadius: 8, padding: "12px 14px",
+      borderRadius: 8, padding: "8px 10px",
       borderTop: accent ? `3px solid ${T.green700}` : `3px solid ${T.borderMd}`,
     }}>
-      <p style={{ fontSize: 10, color: T.t500, textTransform: "uppercase",
-        letterSpacing: "0.07em", margin: "0 0 4px", fontWeight: 600 }}>{label}</p>
-      <p style={{ fontSize: 20, fontWeight: 700,
+      <p style={{ fontSize: 9, color: T.t500, textTransform: "uppercase",
+        letterSpacing: "0.07em", margin: "0 0 3px", fontWeight: 600 }}>{label}</p>
+      <p style={{ fontSize: 16, fontWeight: 700,
         color: accent ? T.green700 : T.t900, margin: 0 }}>{value}</p>
-      {sub && <p style={{ fontSize: 11, color: T.t400, marginTop: 3 }}>{sub}</p>}
+      {sub && <p style={{ fontSize: 10, color: T.t400, marginTop: 2, margin: 0 }}>{sub}</p>}
+    </div>
+  );
+}
+
+// Custom smaller Stat for OPEX / CAPEX lists
+function CompactStatRow({ label, value, color = T.t700 }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      background: T.bgLight, borderRadius: 6, padding: "5px 8px",
+    }}>
+      <span style={{ fontSize: 10, color: T.t500 }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color }}>{value}</span>
     </div>
   );
 }
@@ -193,13 +206,13 @@ function KpiCard({ label, value, sub, color }: {
   return (
     <div style={{
       background: T.bgLight, border: `1px solid ${T.border}`,
-      borderRadius: 8, padding: "14px",
+      borderRadius: 8, padding: "10px 12px",
       borderLeft: `4px solid ${color}`,
     }}>
-      <p style={{ fontSize: 11, color: T.t500, margin: "0 0 5px",
+      <p style={{ fontSize: 10, color: T.t500, margin: "0 0 4px",
         textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</p>
-      <p style={{ fontSize: 22, fontWeight: 800, color, margin: 0 }}>{value}</p>
-      {sub && <p style={{ fontSize: 11, color: T.t400, marginTop: 4 }}>{sub}</p>}
+      <p style={{ fontSize: 18, fontWeight: 800, color, margin: 0 }}>{value}</p>
+      {sub && <p style={{ fontSize: 10, color: T.t400, marginTop: 3, margin: 0 }}>{sub}</p>}
     </div>
   );
 }
@@ -208,30 +221,31 @@ function AppRow({ label, value, note }: { label: string; value: string; note?: s
   return (
     <div style={{
       display: "flex", alignItems: "baseline", gap: 12,
-      padding: "6px 0", borderBottom: `1px solid ${T.bgMid}`,
+      padding: "3px 0", borderBottom: `1px solid ${T.bgMid}`,
     }}>
-      <span style={{ width: 210, fontSize: 11, color: T.t500,
+      <span style={{ width: 210, fontSize: 10, color: T.t500,
         flexShrink: 0, wordBreak: "break-word" }}>{label}</span>
-      <span style={{ flex: 1, fontSize: 11, color: T.t900,
+      <span style={{ flex: 1, fontSize: 10, color: T.t900,
         fontWeight: 500, wordBreak: "break-word" }}>{value}</span>
-      {note && <span style={{ fontSize: 10, color: T.t400, textAlign: "right",
+      {note && <span style={{ fontSize: 9.5, color: T.t400, textAlign: "right",
         flexShrink: 0, maxWidth: 200, wordBreak: "break-word" }}>{note}</span>}
     </div>
   );
 }
 
+// Custom Formula row with smaller sizes
 function Formula({ text, result }: { text: string; result?: string }) {
   return (
     <div style={{
       display: "flex", justifyContent: "space-between", alignItems: "center",
       background: T.green50, border: `1px solid ${T.greenBdr}`,
-      borderRadius: 6, padding: "7px 12px", marginBottom: 5,
+      borderRadius: 6, padding: "4px 8px", marginBottom: 3,
     }}>
-      <code style={{ fontSize: 11, color: T.green700, fontFamily: "ui-monospace,monospace" }}>
+      <code style={{ fontSize: 9.5, color: T.green700, fontFamily: "ui-monospace,monospace" }}>
         {text}
       </code>
       {result && (
-        <span style={{ fontSize: 11, color: T.t500, marginLeft: 16,
+        <span style={{ fontSize: 9.5, color: T.t500, marginLeft: 16,
           flexShrink: 0, fontStyle: "italic" }}>{result}</span>
       )}
     </div>
@@ -241,8 +255,8 @@ function Formula({ text, result }: { text: string; result?: string }) {
 function AnnexTitle({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize: 11, fontWeight: 700, color: T.green700,
-      letterSpacing: "0.08em", margin: "0 0 8px",
+      fontSize: 10, fontWeight: 700, color: T.green700,
+      letterSpacing: "0.08em", margin: "0 0 6px",
       textTransform: "uppercase", borderLeft: `3px solid ${T.green700}`,
       paddingLeft: 8,
     }}>{children}</p>
@@ -287,573 +301,594 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
           left: -9999,
           top: 0,
           width: 800,
-          background: T.white,
-          color: T.t900,
-          fontFamily: "Arial, Helvetica, sans-serif",
-          fontVariantLigatures: "none",
-          WebkitFontSmoothing: "auto",
-          textRendering: "auto",
         }}
       >
-        {/* ════════════════════════════════════════════════════
-            HEADER — dark navy brand bar
-        ════════════════════════════════════════════════════ */}
-        <div style={{
-          background: T.navyDark,
-          borderBottom: `3px solid ${T.lime}`,
-          padding: "24px 32px 20px",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              {/* Logo */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 20 }}>⚡</span>
-                <span style={{ fontSize: 18, fontWeight: 800, color: T.lime, letterSpacing: "-0.01em" }}>
-                  GetEcoPulse
-                </span>
-                <span style={{ fontSize: 9, color: "#475569", letterSpacing: "0.2em",
-                  textTransform: "uppercase", marginLeft: 2 }}>PoC</span>
+        {/* ==================== PAGE 1 ==================== */}
+        <div
+          id="pdf-page-1"
+          style={{
+            width: 800,
+            height: 1097,
+            boxSizing: "border-box",
+            background: T.white,
+            color: T.t900,
+            fontFamily: "Arial, Helvetica, sans-serif",
+            fontVariantLigatures: "none",
+            WebkitFontSmoothing: "auto",
+            textRendering: "auto",
+            overflow: "hidden",
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* HEADER — dark navy brand bar */}
+          <div style={{
+            background: T.navyDark,
+            borderBottom: `3px solid ${T.lime}`,
+            padding: "16px 32px 14px",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                {/* Logo */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 18 }}>⚡</span>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: T.lime, letterSpacing: "-0.01em" }}>
+                    GetEcoPulse
+                  </span>
+                  <span style={{ fontSize: 8, color: "#475569", letterSpacing: "0.2em",
+                    textTransform: "uppercase", marginLeft: 2 }}>PoC</span>
+                </div>
+                <h1 style={{ fontSize: 19, fontWeight: 700, color: "#fff",
+                  margin: "0 0 6px", letterSpacing: "-0.02em", lineHeight: 1.2 }}>
+                  Rapport d&apos;Audit Énergétique Bâtiment
+                </h1>
+                <p style={{ fontSize: 11.5, color: "#94a3b8", margin: 0,
+                  maxWidth: 460, lineHeight: 1.4, wordBreak: "break-word" }}>
+                  {audit.address}
+                </p>
+                <p style={{ fontSize: 10, color: "#475569", margin: "4px 0 0",
+                  fontFamily: "ui-monospace,monospace" }}>
+                  {audit.coordinates.lat.toFixed(5)},&nbsp;{audit.coordinates.lon.toFixed(5)}
+                </p>
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff",
-                margin: "0 0 8px", letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-                Rapport d&apos;Audit Énergétique Bâtiment
-              </h1>
-              <p style={{ fontSize: 13, color: "#94a3b8", margin: 0,
-                maxWidth: 460, lineHeight: 1.5, wordBreak: "break-word" }}>
-                {audit.address}
-              </p>
-              <p style={{ fontSize: 11, color: "#475569", margin: "5px 0 0",
-                fontFamily: "ui-monospace,monospace" }}>
-                {audit.coordinates.lat.toFixed(5)},&nbsp;{audit.coordinates.lon.toFixed(5)}
-              </p>
-            </div>
-            <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 20 }}>
-              <p style={{ fontSize: 9, color: "#475569", margin: "0 0 3px",
-                textTransform: "uppercase", letterSpacing: "0.1em" }}>Généré le</p>
-              <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 12px" }}>{dateStr}</p>
-              <div style={{
-                padding: "6px 14px",
-                background: isRealData ? T.limeDim : "rgba(245,158,11,0.12)",
-                border: `1px solid ${isRealData ? T.limeBdr : "rgba(245,158,11,0.4)"}`,
-                borderRadius: 6, fontSize: 10,
-                color: isRealData ? T.lime : "#fbbf24",
-                fontWeight: 700, letterSpacing: "0.02em",
-              }}>
-                {isRealData ? "✅ Données Linky réelles" : "⚠ Estimation sectorielle ±30%"}
+              <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 20 }}>
+                <p style={{ fontSize: 8, color: "#475569", margin: "0 0 2px",
+                  textTransform: "uppercase", letterSpacing: "0.1em" }}>Généré le</p>
+                <p style={{ fontSize: 11.5, color: "#94a3b8", margin: "0 0 10px" }}>{dateStr}</p>
+                <div style={{
+                  padding: "5px 12px",
+                  background: isRealData ? T.limeDim : "rgba(245,158,11,0.12)",
+                  border: `1px solid ${isRealData ? T.limeBdr : "rgba(245,158,11,0.4)"}`,
+                  borderRadius: 5, fontSize: 9.5,
+                  color: isRealData ? T.lime : "#fbbf24",
+                  fontWeight: 700, letterSpacing: "0.02em",
+                }}>
+                  {isRealData ? "✅ Données Linky réelles" : "⚠ Estimation sectorielle ±30%"}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ════════════════════════════════════════════════════
-            BODY
-        ════════════════════════════════════════════════════ */}
-        <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
+          {/* BODY PAGE 1 */}
+          <div style={{ padding: "18px 32px 20px", display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
+            
+            {/* 01 — Identité & Emprise */}
+            <section>
+              <SectionBar n="01" title="Identité & Emprise" />
 
-          {/* ──────────────────────────────────────────────
-              01 — Identité & Emprise
-          ────────────────────────────────────────────── */}
-          <section>
-            <SectionBar n="01" title="Identité & Emprise" />
-
-            {/* Satellite image — side by side layout */}
-            <div style={{ display: "flex", gap: 16, marginBottom: 14, alignItems: "flex-start" }}>
-
-              {/* Image (left, 55%) */}
-              {audit.satellite_image_url && (
-                <div style={{
-                  flex: "0 0 55%", borderRadius: 8, overflow: "hidden",
-                  border: `1px solid ${T.border}`, lineHeight: 0,
-                  background: T.bgLight,
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={audit.satellite_image_url}
-                    alt="Vue satellite"
-                    crossOrigin="anonymous"
-                    style={{ width: "100%", aspectRatio: "1/1", objectFit: "cover", display: "block" }}
-                  />
-                </div>
-              )}
-
-              {/* Right column: 4 stats + info boxes */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <Stat
-                    label="Surface de calcul"
-                    value={formatSurface(phys.roof_analysis.surface_m2_used)}
-                    sub={`Source : ${phys.footprint.source === "fallback" ? "Vision IA" : phys.footprint.source.toUpperCase()}`}
-                    accent
-                  />
-                  <Stat
-                    label="Type de toit"
-                    value={ROOF_TYPE_FR[phys.roof_analysis.roof_type] ?? phys.roof_analysis.roof_type}
-                    sub={`Confiance : ${phys.roof_analysis.confidence}`}
-                  />
-                  <Stat
-                    label="Orientation"
-                    value={azDir}
-                    sub={`${phys.roof_analysis.azimuth_degrees}° — ${azSolar}`}
-                    accent={azSolar === "optimal"}
-                  />
-                  <Stat
-                    label="Irradiance locale"
-                    value={`${phys.climate.dni_annual_kwh_m2}`}
-                    sub={`kWh/m²/an · ${phys.climate.year}`}
-                    accent
-                  />
-                </div>
-
-                {/* Vision IA reasoning */}
-                <div style={{
-                  background: T.bgLight, border: `1px solid ${T.border}`,
-                  borderRadius: 8, padding: "10px 12px", fontSize: 11, color: T.t500,
-                  lineHeight: 1.5,
-                }}>
-                  <span style={{ fontWeight: 600, color: T.t700 }}>Vision IA : </span>
-                  {phys.roof_analysis.reasoning}
-                </div>
-
-                {/* Business context */}
-                {pc && pc.activity_type !== "N/A" && (
+              {/* Satellite image — side by side layout */}
+              <div style={{ display: "flex", gap: 16, marginBottom: 0, alignItems: "flex-start" }}>
+                {/* Image (left, 42%) */}
+                {audit.satellite_image_url && (
                   <div style={{
-                    background: T.bgLight, border: `1px solid ${T.border}`,
-                    borderRadius: 8, padding: "10px 12px", fontSize: 11, color: T.t500,
-                    lineHeight: 1.5,
+                    flex: "0 0 42%", borderRadius: 8, overflow: "hidden",
+                    border: `1px solid ${T.border}`, lineHeight: 0,
+                    background: T.bgLight,
+                    height: 225,
                   }}>
-                    <span style={{ fontWeight: 600, color: T.t700 }}>Activité : </span>
-                    <span style={{ color: T.t900 }}>{pc.activity_type}</span>
-                    <span style={{ color: T.t400, marginLeft: 8 }}>
-                      · Plausibilité : <strong style={{ color: T.t700 }}>{pc.surface_plausibility}</strong>
-                    </span>
-                    {pc.coherence_ratio != null && (
-                      <span style={{ color: T.t400, marginLeft: 6 }}>
-                        · Ratio V/OSM : {pc.coherence_ratio}×
-                      </span>
-                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={audit.satellite_image_url}
+                      alt="Vue satellite"
+                      crossOrigin="anonymous"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
                   </div>
                 )}
-              </div>
-            </div>
 
-            {/* Obstructions — full width */}
-            {phys.roof_analysis.obstructions.length > 0 && (
-              <div style={{
-                background: T.bgLight, border: `1px solid ${T.border}`,
-                borderRadius: 8, padding: "9px 14px", fontSize: 11, color: T.t500,
-              }}>
-                <span style={{ fontWeight: 600, color: T.t700 }}>Obstructions détectées : </span>
-                {phys.roof_analysis.obstructions.join(", ")}
-              </div>
-            )}
-          </section>
+                {/* Right column: 4 stats + info boxes */}
+                <div style={{ flex: 1, height: 225, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <Stat
+                      label="Surface de calcul"
+                      value={formatSurface(phys.roof_analysis.surface_m2_used)}
+                      sub={`Source : ${phys.footprint.source === "fallback" ? "Vision IA" : phys.footprint.source.toUpperCase()}`}
+                      accent
+                    />
+                    <Stat
+                      label="Type de toit"
+                      value={ROOF_TYPE_FR[phys.roof_analysis.roof_type] ?? phys.roof_analysis.roof_type}
+                      sub={`Confiance : ${phys.roof_analysis.confidence}`}
+                    />
+                    <Stat
+                      label="Orientation"
+                      value={azDir}
+                      sub={`${phys.roof_analysis.azimuth_degrees}° — ${azSolar}`}
+                      accent={azSolar === "optimal"}
+                    />
+                    <Stat
+                      label="Irradiance locale"
+                      value={`${phys.climate.dni_annual_kwh_m2}`}
+                      sub={`kWh/m²/an · ${phys.climate.year}`}
+                      accent
+                    />
+                  </div>
 
-          {/* ──────────────────────────────────────────────
-              02 — Diagnostic de Consommation
-          ────────────────────────────────────────────── */}
-          <section>
-            <SectionBar n="02" title="Diagnostic de Consommation" />
-
-            {/* Chart */}
-            <div style={{
-              background: T.bgLight, border: `1px solid ${T.border}`,
-              borderRadius: 10, padding: "16px 18px", marginBottom: 14,
-            }}>
-              <p style={{ fontSize: 11, color: T.t500, textTransform: "uppercase",
-                letterSpacing: "0.08em", margin: "0 0 12px", fontWeight: 600 }}>
-                Profil de charge journalier
-                {isRealData ? " — données Enedis réelles" : " — estimation sectorielle"}
-              </p>
-              <div style={{ overflow: "hidden" }}>
-                <LoadProfileSvg {...diag.load_profile} />
-              </div>
-              <div style={{ display: "flex", gap: 20, marginTop: 10, fontSize: 11, color: T.t400 }}>
-                <span>
-                  <span style={{ display: "inline-block", width: 10, height: 10,
-                    background: "#4ade80", borderRadius: 2, marginRight: 5 }} />
-                  Sem. (heures creuses)
-                </span>
-                <span>
-                  <span style={{ display: "inline-block", width: 10, height: 10,
-                    background: "#16a34a", borderRadius: 2, marginRight: 5 }} />
-                  Sem. (heures pleines)
-                </span>
-                <span>
-                  <span style={{ display: "inline-block", width: 10, height: 10,
-                    background: "#60a5fa", borderRadius: 2, marginRight: 5 }} />
-                  Week-end
-                </span>
-              </div>
-            </div>
-
-            {/* KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 14 }}>
-              <KpiCard
-                label="Consommation annuelle"
-                value={`${n(diag.theoretical_annual_consumption_kwh / 1000)} MWh/an`}
-                sub={`${n(diag.theoretical_annual_consumption_kwh)} kWh`}
-                color={T.t700}
-              />
-              <KpiCard
-                label="Gaspillage nocturne"
-                value={`${n(diag.estimated_waste_kwh / 1000)} MWh/an`}
-                sub={`Talon : ${Math.round(diag.night_talon_pct * 100)}% · ${diag.wasted_tco2e} tCO₂e/an`}
-                color="#ea580c"
-              />
-              <KpiCard
-                label="Économie potentielle"
-                value={`${n(diag.opex_savings_eur_per_year)} €/an`}
-                sub={`ROI : ${diag.opex_roi}`}
-                color={T.green700}
-              />
-            </div>
-
-            {/* Grade + ISO */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {gradeCfg && (
-                <div style={{
-                  background: gradeCfg.bg,
-                  border: `2px solid ${gradeCfg.border}`,
-                  borderRadius: 10, padding: "14px 18px",
-                  display: "flex", alignItems: "center", gap: 16,
-                }}>
+                  {/* Vision IA reasoning */}
                   <div style={{
-                    width: 52, height: 52, background: gradeCfg.border,
-                    borderRadius: 10, display: "flex", alignItems: "center",
-                    justifyContent: "center", flexShrink: 0,
+                    background: T.bgLight, border: `1px solid ${T.border}`,
+                    borderRadius: 6, padding: "6px 10px", fontSize: 10, color: T.t500,
+                    lineHeight: 1.4,
                   }}>
-                    <span style={{ fontSize: 28, fontWeight: 900, color: "#fff" }}>{grade}</span>
+                    <span style={{ fontWeight: 600, color: T.t700 }}>Vision IA : </span>
+                    {phys.roof_analysis.reasoning}
                   </div>
-                  <div>
-                    <p style={{ fontSize: 10, color: gradeCfg.text, textTransform: "uppercase",
-                      letterSpacing: "0.08em", margin: "0 0 3px", fontWeight: 700, opacity: 0.7 }}>
-                      GetEcoPulse Grade
-                    </p>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: gradeCfg.text, margin: 0 }}>
-                      {gradeCfg.label}
-                    </p>
-                    <p style={{ fontSize: 11, color: gradeCfg.text, marginTop: 3, opacity: 0.75 }}>
-                      vs médiane IEA mondiale ({euiMedian} kWh/m²/an)
-                    </p>
-                  </div>
+
+                  {/* Business context */}
+                  {pc && pc.activity_type !== "N/A" && (
+                    <div style={{
+                      background: T.bgLight, border: `1px solid ${T.border}`,
+                      borderRadius: 6, padding: "6px 10px", fontSize: 10, color: T.t500,
+                      lineHeight: 1.4,
+                    }}>
+                      <span style={{ fontWeight: 600, color: T.t700 }}>Activité : </span>
+                      <span style={{ color: T.t900 }}>{pc.activity_type}</span>
+                      <span style={{ color: T.t400, marginLeft: 8 }}>
+                        · Plausibilité : <strong style={{ color: T.t700 }}>{pc.surface_plausibility}</strong>
+                      </span>
+                      {pc.coherence_ratio != null && (
+                        <span style={{ color: T.t400, marginLeft: 6 }}>
+                          · Ratio V/OSM : {pc.coherence_ratio}×
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-              {diag.iso_50001_assessment && (
+              </div>
+
+              {/* Obstructions — full width */}
+              {phys.roof_analysis.obstructions.length > 0 && (
                 <div style={{
                   background: T.bgLight, border: `1px solid ${T.border}`,
-                  borderRadius: 10, padding: "14px 18px",
+                  borderRadius: 8, padding: "8px 14px", fontSize: 10, color: T.t500,
+                  marginTop: 10,
                 }}>
-                  <p style={{ fontSize: 10, color: T.t500, textTransform: "uppercase",
-                    letterSpacing: "0.08em", margin: "0 0 10px", fontWeight: 700 }}>
-                    Pré-évaluation ISO 50001
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {[
-                      {
-                        ok: diag.iso_50001_assessment.has_30min_data,
-                        ok_text:  "Mesure continue validée (§6.3)",
-                        ko_text: "Défaut de mesure continue (§6.3)",
-                      },
-                      {
-                        ok: diag.iso_50001_assessment.has_quantified_baseline,
-                        ok_text:  "Talon de nuit documenté (§6.6)",
-                        ko_text: "Talon de consommation non piloté (§6.6)",
-                      },
-                    ].map((item, idx) => (
-                      <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8,
-                        fontSize: 12 }}>
-                        <span style={{
-                          fontSize: 14,
-                          color: item.ok ? T.green700 : "#dc2626", flexShrink: 0,
-                        }}>
-                          {item.ok ? "✓" : "✗"}
-                        </span>
-                        <span style={{ color: item.ok ? T.green700 : "#dc2626", fontWeight: 500 }}>
-                          {item.ok ? item.ok_text : item.ko_text}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <span style={{ fontWeight: 600, color: T.t700 }}>Obstructions détectées : </span>
+                  {phys.roof_analysis.obstructions.join(", ")}
                 </div>
               )}
-            </div>
-          </section>
+            </section>
 
-          {/* ──────────────────────────────────────────────
-              03 — Plan d'Action & Scénarios
-          ────────────────────────────────────────────── */}
-          <section>
-            <SectionBar n="03" title="Plan d'Action & Scénarios" />
+            {/* 02 — Diagnostic de Consommation */}
+            <section>
+              <SectionBar n="02" title="Diagnostic de Consommation" />
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-
-              {/* OPEX — Night curtailment */}
+              {/* Chart */}
               <div style={{
-                background: T.white, border: `2px solid ${T.green700}`,
-                borderRadius: 10, padding: "16px", position: "relative",
+                background: T.bgLight, border: `1px solid ${T.border}`,
+                borderRadius: 10, padding: "12px 14px", marginBottom: 12,
               }}>
-                <div style={{
-                  position: "absolute", top: -11, left: 14,
-                  background: T.green700, color: "#fff",
-                  fontSize: 9, fontWeight: 700, padding: "3px 10px", borderRadius: 4,
-                  letterSpacing: "0.06em",
-                }}>PRIORITAIRE</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 16 }}>🌙</span>
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.t900, margin: 0 }}>
-                      Effacement Talon de Nuit
-                    </p>
-                    <p style={{ fontSize: 11, color: T.t500, margin: 0 }}>
-                      OPEX — sans investissement
-                    </p>
-                  </div>
+                <p style={{ fontSize: 10, color: T.t500, textTransform: "uppercase",
+                  letterSpacing: "0.08em", margin: "0 0 10px", fontWeight: 600 }}>
+                  Profil de charge journalier
+                  {isRealData ? " — données Enedis réelles" : " — estimation sectorielle"}
+                </p>
+                <div style={{ overflow: "hidden" }}>
+                  <LoadProfileSvg {...diag.load_profile} />
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {([
-                    ["Économie annuelle",  `${n(diag.opex_savings_eur_per_year)} €/an`],
-                    ["Gaspillage ciblé",   `${n(diag.estimated_waste_kwh / 1000)} MWh/an`],
-                    ["Talon nocturne",     `${Math.round(diag.night_talon_pct * 100)} %`],
-                    ["Investissement",     `${n(diag.opex_capex_eur)} €`],
-                  ] as [string,string][]).map(([lbl, val]) => (
-                    <div key={lbl} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      background: T.bgLight, borderRadius: 6, padding: "6px 10px",
-                    }}>
-                      <span style={{ fontSize: 11, color: T.t500 }}>{lbl}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.green700 }}>{val}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 10,
-                  paddingTop: 8, fontSize: 12, color: T.t500 }}>
-                  ROI : <span style={{ color: T.green700, fontWeight: 700 }}>{diag.opex_roi}</span>
-                </div>
-              </div>
-
-              {/* Solar PV */}
-              <div style={{
-                background: T.white, border: `2px solid ${T.blue700}`,
-                borderRadius: 10, padding: "16px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 16 }}>☀️</span>
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.t900, margin: 0 }}>
-                      Installation Solaire
-                    </p>
-                    <p style={{ fontSize: 11, color: T.t500, margin: 0 }}>
-                      CAPEX — Autoconsommation PV
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {([
-                    ["CAPEX estimé",    `${n(fin.capex_eur / 1000, 0)} k€`],
-                    ["Économie ann.",   `${n(fin.annual_savings_eur / 1000, 0)} k€/an`],
-                    ["Puissance crête", `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`],
-                    ["Couverture",      `${fin.solar_coverage_pct} %`],
-                  ] as [string,string][]).map(([lbl, val]) => (
-                    <div key={lbl} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      background: T.bgLight, borderRadius: 6, padding: "6px 10px",
-                    }}>
-                      <span style={{ fontSize: 11, color: T.t500 }}>{lbl}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.blue700 }}>{val}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 10,
-                  paddingTop: 8, fontSize: 12, color: T.t500 }}>
-                  ROI : <span style={{ color: T.blue700, fontWeight: 700 }}>
-                    {fin.roi_years !== null ? `${fin.roi_years} ans` : "Non calculable"}
+                <div style={{ display: "flex", gap: 20, marginTop: 8, fontSize: 9.5, color: T.t400 }}>
+                  <span>
+                    <span style={{ display: "inline-block", width: 8, height: 8,
+                      background: "#4ade80", borderRadius: 2, marginRight: 5 }} />
+                    Sem. (heures creuses)
+                  </span>
+                  <span>
+                    <span style={{ display: "inline-block", width: 8, height: 8,
+                      background: "#16a34a", borderRadius: 2, marginRight: 5 }} />
+                    Sem. (heures pleines)
+                  </span>
+                  <span>
+                    <span style={{ display: "inline-block", width: 8, height: 8,
+                      background: "#60a5fa", borderRadius: 2, marginRight: 5 }} />
+                    Week-end
                   </span>
                 </div>
               </div>
 
-              {/* Thermal — coming soon */}
-              <div style={{
-                background: T.bgLight, border: `1px solid ${T.border}`,
-                borderRadius: 10, padding: "16px", opacity: 0.6,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 16 }}>🔥</span>
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: T.t700, margin: 0 }}>
-                      Isolation Thermique
+              {/* KPIs */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }}>
+                <KpiCard
+                  label="Consommation annuelle"
+                  value={`${n(diag.theoretical_annual_consumption_kwh / 1000)} MWh/an`}
+                  sub={`${n(diag.theoretical_annual_consumption_kwh)} kWh`}
+                  color={T.t700}
+                />
+                <KpiCard
+                  label="Gaspillage nocturne"
+                  value={`${n(diag.estimated_waste_kwh / 1000)} MWh/an`}
+                  sub={`Talon : ${Math.round(diag.night_talon_pct * 100)}% · ${diag.wasted_tco2e} tCO₂e/an`}
+                  color="#ea580c"
+                />
+                <KpiCard
+                  label="Économie potentielle"
+                  value={`${n(diag.opex_savings_eur_per_year)} €/an`}
+                  sub={`ROI : ${diag.opex_roi}`}
+                  color={T.green700}
+                />
+              </div>
+
+              {/* Grade + ISO */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {gradeCfg && (
+                  <div style={{
+                    background: gradeCfg.bg,
+                    border: `2px solid ${gradeCfg.border}`,
+                    borderRadius: 10, padding: "10px 14px",
+                    display: "flex", alignItems: "center", gap: 14,
+                  }}>
+                    <div style={{
+                      width: 44, height: 44, background: gradeCfg.border,
+                      borderRadius: 8, display: "flex", alignItems: "center",
+                      justifyContent: "center", flexShrink: 0,
+                    }}>
+                      <span style={{ fontSize: 24, fontWeight: 900, color: "#fff" }}>{grade}</span>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 9, color: gradeCfg.text, textTransform: "uppercase",
+                        letterSpacing: "0.08em", margin: "0 0 2px", fontWeight: 700, opacity: 0.7 }}>
+                        GetEcoPulse Grade
+                      </p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: gradeCfg.text, margin: 0 }}>
+                        {gradeCfg.label}
+                      </p>
+                      <p style={{ fontSize: 9.5, color: gradeCfg.text, marginTop: 2, opacity: 0.75 }}>
+                        vs médiane IEA mondiale ({euiMedian} kWh/m²/an)
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {diag.iso_50001_assessment && (
+                  <div style={{
+                    background: T.bgLight, border: `1px solid ${T.border}`,
+                    borderRadius: 10, padding: "10px 14px",
+                  }}>
+                    <p style={{ fontSize: 9, color: T.t500, textTransform: "uppercase",
+                      letterSpacing: "0.08em", margin: "0 0 8px", fontWeight: 700 }}>
+                      Pré-évaluation ISO 50001
                     </p>
-                    <p style={{ fontSize: 11, color: T.t500, margin: 0 }}>
-                      Pertes par la toiture
-                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {[
+                        {
+                          ok: diag.iso_50001_assessment.has_30min_data,
+                          ok_text:  "Mesure continue validée (§6.3)",
+                          ko_text: "Défaut de mesure continue (§6.3)",
+                        },
+                        {
+                          ok: diag.iso_50001_assessment.has_quantified_baseline,
+                          ok_text:  "Talon de nuit documenté (§6.6)",
+                          ko_text: "Talon de consommation non piloté (§6.6)",
+                        },
+                      ].map((item, idx) => (
+                        <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6,
+                          fontSize: 10.5 }}>
+                          <span style={{
+                            fontSize: 12,
+                            color: item.ok ? T.green700 : "#dc2626", flexShrink: 0,
+                          }}>
+                            {item.ok ? "✓" : "✗"}
+                          </span>
+                          <span style={{ color: item.ok ? T.green700 : "#dc2626", fontWeight: 500 }}>
+                            {item.ok ? item.ok_text : item.ko_text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+          </div>
+        </div>
+
+        {/* ==================== PAGE 2 ==================== */}
+        <div
+          id="pdf-page-2"
+          style={{
+            width: 800,
+            height: 1097,
+            boxSizing: "border-box",
+            background: T.white,
+            color: T.t900,
+            fontFamily: "Arial, Helvetica, sans-serif",
+            fontVariantLigatures: "none",
+            WebkitFontSmoothing: "auto",
+            textRendering: "auto",
+            overflow: "hidden",
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            padding: "24px 32px 20px 32px",
+          }}
+        >
+          {/* BODY PAGE 2 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+            
+            {/* 03 — Plan d'Action & Scénarios */}
+            <section>
+              <SectionBar n="03" title="Plan d'Action & Scénarios" />
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+
+                {/* OPEX — Night curtailment */}
+                <div style={{
+                  background: T.white, border: `2px solid ${T.green700}`,
+                  borderRadius: 10, padding: "14px", position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: 200,
+                  boxSizing: "border-box",
+                }}>
+                  <div style={{
+                    position: "absolute", top: -11, left: 14,
+                    background: T.green700, color: "#fff",
+                    fontSize: 8.5, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
+                    letterSpacing: "0.06em",
+                  }}>PRIORITAIRE</div>
+                  
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>🌙</span>
+                    <div>
+                      <p style={{ fontSize: 11.5, fontWeight: 700, color: T.t900, margin: 0 }}>
+                        Effacement Talon de Nuit
+                      </p>
+                      <p style={{ fontSize: 9.5, color: T.t500, margin: 0 }}>
+                        OPEX — sans investissement
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, justifyContent: "center" }}>
+                    <CompactStatRow label="Économie annuelle" value={`${n(diag.opex_savings_eur_per_year)} €/an`} color={T.green700} />
+                    <CompactStatRow label="Gaspillage ciblé" value={`${n(diag.estimated_waste_kwh / 1000)} MWh/an`} />
+                    <CompactStatRow label="Talon nocturne" value={`${Math.round(diag.night_talon_pct * 100)} %`} />
+                    <CompactStatRow label="Investissement" value={`${n(diag.opex_capex_eur)} €`} />
+                  </div>
+                  
+                  <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 8,
+                    paddingTop: 6, fontSize: 10.5, color: T.t500 }}>
+                    ROI : <span style={{ color: T.green700, fontWeight: 700 }}>{diag.opex_roi}</span>
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {([
-                    ["Risque thermique", phys.thermal_assessment.risk_level],
-                    ["Score de perte",  `${Math.round(phys.thermal_assessment.score * 100)} %`],
-                  ] as [string,string][]).map(([lbl, val]) => (
-                    <div key={lbl} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      background: T.white, borderRadius: 6, padding: "6px 10px",
-                    }}>
-                      <span style={{ fontSize: 11, color: T.t500 }}>{lbl}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.t700 }}>{val}</span>
+
+                {/* Solar PV */}
+                <div style={{
+                  background: T.white, border: `2px solid ${T.blue700}`,
+                  borderRadius: 10, padding: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: 200,
+                  boxSizing: "border-box",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>☀️</span>
+                    <div>
+                      <p style={{ fontSize: 11.5, fontWeight: 700, color: T.t900, margin: 0 }}>
+                        Installation Solaire
+                      </p>
+                      <p style={{ fontSize: 9.5, color: T.t500, margin: 0 }}>
+                        CAPEX — Autoconsommation PV
+                      </p>
                     </div>
-                  ))}
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, justifyContent: "center" }}>
+                    <CompactStatRow label="CAPEX estimé" value={`${n(fin.capex_eur / 1000, 0)} k€`} color={T.blue700} />
+                    <CompactStatRow label="Économie ann." value={`${n(fin.annual_savings_eur / 1000, 0)} k€/an`} />
+                    <CompactStatRow label="Puissance crête" value={`${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`} />
+                    <CompactStatRow label="Couverture" value={`${fin.solar_coverage_pct} %`} />
+                  </div>
+                  
+                  <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 8,
+                    paddingTop: 6, fontSize: 10.5, color: T.t500 }}>
+                    ROI : <span style={{ color: T.blue700, fontWeight: 700 }}>
+                      {fin.roi_years !== null ? `${fin.roi_years} ans` : "Non calculable"}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 10,
-                  paddingTop: 8, fontSize: 11, color: T.t400, fontStyle: "italic" }}>
-                  Module en cours de développement
+
+                {/* Thermal — coming soon */}
+                <div style={{
+                  background: T.bgLight, border: `1px solid ${T.border}`,
+                  borderRadius: 10, padding: "14px", opacity: 0.6,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: 200,
+                  boxSizing: "border-box",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>🔥</span>
+                    <div>
+                      <p style={{ fontSize: 11.5, fontWeight: 700, color: T.t700, margin: 0 }}>
+                        Isolation Thermique
+                      </p>
+                      <p style={{ fontSize: 9.5, color: T.t500, margin: 0 }}>
+                        Pertes par la toiture
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, justifyContent: "center" }}>
+                    <CompactStatRow label="Risque thermique" value={phys.thermal_assessment.risk_level} color={T.t700} />
+                    <CompactStatRow label="Score de perte" value={`${Math.round(phys.thermal_assessment.score * 100)} %`} />
+                  </div>
+                  
+                  <div style={{ borderTop: `1px solid ${T.border}`, marginTop: 8,
+                    paddingTop: 6, fontSize: 9.5, color: T.t400, fontStyle: "italic" }}>
+                    Module en développement
+                  </div>
                 </div>
+
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* ════════════════════════════════════════════════════
-              ANNEXES TECHNIQUES
-          ════════════════════════════════════════════════════ */}
-          <section>
-            <div style={{
-              borderTop: `2px solid ${T.border}`,
-              paddingTop: 22, marginBottom: 18,
-              display: "flex", alignItems: "center", gap: 12,
-            }}>
-              <span style={{
-                fontSize: 11, fontWeight: 800, color: T.green700,
-                letterSpacing: "0.18em", textTransform: "uppercase",
-              }}>ANNEXES TECHNIQUES</span>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-            </div>
-
-            <div style={{
-              background: T.bgLight, border: `1px solid ${T.border}`,
-              borderRadius: 12, padding: "22px 26px",
-            }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: T.t900,
-                margin: "0 0 20px", letterSpacing: "-0.01em" }}>
-                Notes de Calculs &amp; Hypothèses
-              </h3>
-
-              {/* A. Géospatiales */}
-              <div style={{ marginBottom: 20 }}>
-                <AnnexTitle>A. Données Géospatiales</AnnexTitle>
-                <AppRow label="Source de la surface"
-                  value={phys.footprint.source === "fallback" ? "Vision IA" : phys.footprint.source.toUpperCase()}
-                  note={phys.footprint.area_m2 ? `Empreinte OSM brute : ${n(phys.footprint.area_m2)} m²` : "Aucun polygone OSM disponible"} />
-                <AppRow label="Surface Vision IA"
-                  value={formatSurface(phys.roof_analysis.surface_m2_vision)}
-                  note="Estimation Vision IA via image satellite" />
-                <AppRow label="Surface de calcul retenue"
-                  value={formatSurface(phys.roof_analysis.surface_m2_used)}
-                  note={`Confiance : ${phys.roof_analysis.confidence}`} />
-                {pc?.coherence_ratio != null && (
-                  <AppRow label="Ratio cohérence Vision / OSM"
-                    value={`${pc.coherence_ratio}×`} note={pc.coherence_flag} />
-                )}
-                <AppRow label="Azimuth du toit"
-                  value={`${phys.roof_analysis.azimuth_degrees}° — ${azDir}`}
-                  note={`Exposition solaire : ${azSolar}`} />
-                <AppRow label="Obstructions détectées"
-                  value={phys.roof_analysis.obstructions.length === 0
-                    ? "Aucune" : phys.roof_analysis.obstructions.join(", ")} />
-                <AppRow label="Facteur d'orientation solaire"
-                  value={phys.solar_potential.orientation_factor.toFixed(3)}
-                  note="1.000 = exposition plein Sud optimale" />
-                <AppRow label="Facteur d'ombrage / obstruction"
-                  value={phys.solar_potential.obstruction_factor.toFixed(3)}
-                  note="1.000 = surface libre sans ombrage" />
-                <AppRow label="Surface PV exploitable"
-                  value={formatSurface(phys.solar_potential.usable_surface_m2)}
-                  note="= surface × 0.85 (marge structurale) × facteur obstruction" />
-                <AppRow label="Zoom satellite utilisé"
-                  value={`Niveau ${phys.footprint.zoom_used}`}
-                  note="Mapbox Static API — satellite-v9" />
+            {/* 04 — Annexes Techniques */}
+            <section>
+              <div style={{
+                borderTop: `2px solid ${T.border}`,
+                paddingTop: 12, marginBottom: 10,
+                display: "flex", alignItems: "center", gap: 12,
+              }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 800, color: T.green700,
+                  letterSpacing: "0.18em", textTransform: "uppercase",
+                }}>ANNEXES TECHNIQUES</span>
+                <div style={{ flex: 1, height: 1, background: T.border }} />
               </div>
 
-              {/* B. Sectoriels */}
-              <div style={{ marginBottom: 20 }}>
-                <AnnexTitle>B. Paramètres Sectoriels</AnnexTitle>
-                <AppRow label="Code NAF / Secteur"
-                  value={`${nafCode} — ${NAF_LABELS[nafCode] ?? fin.naf_sector}`} />
-                <AppRow label="EUI de référence (calcul)"
-                  value={`${euiUsed} kWh/m²/an`}
-                  note="Consommation de référence utilisée pour le calcul" />
-                <AppRow label="EUI médiane IEA mondiale"
-                  value={`${euiMedian} kWh/m²/an`}
-                  note="Benchmark pour le classement GetEcoPulse Grade" />
-                <AppRow label="Prix de l'énergie"
-                  value={`${fin.energy_price_eur_kwh} €/kWh`}
-                  note="Tarif industriel moyen France HT" />
-                <AppRow label="Facteur d'émission Scope 2"
-                  value={`${emFactor} kg CO₂e/kWh`}
-                  note={`Pays : ${countryCode} — Source : IEA 2023 market-based`} />
-                <AppRow label="Talon de nuit sectoriel"
-                  value={`${sector ? Math.round(sector.night_pct * 100) : Math.round(diag.night_talon_pct * 100)} %`}
-                  note="Fraction hors heures d'exploitation" />
-              </div>
+              <div style={{
+                background: T.bgLight, border: `1px solid ${T.border}`,
+                borderRadius: 10, padding: "14px 20px",
+              }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: T.t900,
+                  margin: "0 0 12px", letterSpacing: "-0.01em" }}>
+                  Notes de Calculs &amp; Hypothèses
+                </h3>
 
-              {/* C. Formules */}
-              <div style={{ marginBottom: 20 }}>
-                <AnnexTitle>C. Formules de Calcul</AnnexTitle>
-                {isRealData ? (
-                  <Formula text="Consommation annuelle = Mesure directe Enedis / Linky"
-                    result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`} />
-                ) : (
+                {/* A. Géospatiales */}
+                <div style={{ marginBottom: 12 }}>
+                  <AnnexTitle>A. Données Géospatiales</AnnexTitle>
+                  <AppRow label="Source de la surface"
+                    value={phys.footprint.source === "fallback" ? "Vision IA" : phys.footprint.source.toUpperCase()}
+                    note={phys.footprint.area_m2 ? `Empreinte OSM brute : ${n(phys.footprint.area_m2)} m²` : "Aucun polygone OSM disponible"} />
+                  <AppRow label="Surface Vision IA"
+                    value={formatSurface(phys.roof_analysis.surface_m2_vision)}
+                    note="Estimation Vision IA via image satellite" />
+                  <AppRow label="Surface de calcul retenue"
+                    value={formatSurface(phys.roof_analysis.surface_m2_used)}
+                    note={`Confiance : ${phys.roof_analysis.confidence}`} />
+                  {pc?.coherence_ratio != null && (
+                    <AppRow label="Ratio cohérence Vision / OSM"
+                      value={`${pc.coherence_ratio}×`} note={pc.coherence_flag} />
+                  )}
+                  <AppRow label="Azimuth du toit"
+                    value={`${phys.roof_analysis.azimuth_degrees}° — ${azDir}`}
+                    note={`Exposition solaire : ${azSolar}`} />
+                  <AppRow label="Obstructions détectées"
+                    value={phys.roof_analysis.obstructions.length === 0
+                      ? "Aucune" : phys.roof_analysis.obstructions.join(", ")} />
+                  <AppRow label="Facteur d'orientation solaire"
+                    value={phys.solar_potential.orientation_factor.toFixed(3)}
+                    note="1.000 = exposition plein Sud optimale" />
+                  <AppRow label="Facteur d'ombrage / obstruction"
+                    value={phys.solar_potential.obstruction_factor.toFixed(3)}
+                    note="1.000 = surface libre sans ombrage" />
+                  <AppRow label="Surface PV exploitable"
+                    value={formatSurface(phys.solar_potential.usable_surface_m2)}
+                    note="= surface × 0.85 (marge) × facteur obstruction" />
+                </div>
+
+                {/* B. Sectoriels */}
+                <div style={{ marginBottom: 12 }}>
+                  <AnnexTitle>B. Paramètres Sectoriels</AnnexTitle>
+                  <AppRow label="Code NAF / Secteur"
+                    value={`${nafCode} — ${NAF_LABELS[nafCode] ?? fin.naf_sector}`} />
+                  <AppRow label="EUI de référence (calcul)"
+                    value={`${euiUsed} kWh/m²/an`}
+                    note="Consommation de référence utilisée pour le calcul" />
+                  <AppRow label="EUI médiane IEA mondiale"
+                    value={`${euiMedian} kWh/m²/an`}
+                    note="Benchmark pour le classement GetEcoPulse Grade" />
+                  <AppRow label="Prix de l'énergie"
+                    value={`${fin.energy_price_eur_kwh} €/kWh`}
+                    note="Tarif industriel moyen France HT" />
+                  <AppRow label="Facteur d'émission Scope 2"
+                    value={`${emFactor} kg CO₂e/kWh`}
+                    note={`Pays : ${countryCode} — Source : IEA 2023`} />
+                  <AppRow label="Talon de nuit sectoriel"
+                    value={`${sector ? Math.round(sector.night_pct * 100) : Math.round(diag.night_talon_pct * 100)} %`}
+                    note="Fraction hors heures d'exploitation" />
+                </div>
+
+                {/* C. Formules */}
+                <div style={{ marginBottom: 12 }}>
+                  <AnnexTitle>C. Formules de Calcul</AnnexTitle>
+                  {isRealData ? (
+                    <Formula text="Consommation annuelle = Mesure directe Enedis / Linky"
+                      result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`} />
+                  ) : (
+                    <Formula
+                      text={`Conso. = ${formatSurface(phys.roof_analysis.surface_m2_used)} × ${euiUsed} kWh/m²/an`}
+                      result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`} />
+                  )}
                   <Formula
-                    text={`Conso. = ${formatSurface(phys.roof_analysis.surface_m2_used)} × ${euiUsed} kWh/m²/an`}
-                    result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`} />
-                )}
-                <Formula
-                  text={`Gaspillage = ${n(diag.theoretical_annual_consumption_kwh)} kWh × ${Math.round(diag.night_talon_pct * 100)}%`}
-                  result={`= ${n(diag.estimated_waste_kwh)} kWh/an`} />
-                <Formula
-                  text={`Coût gaspillage = ${n(diag.estimated_waste_kwh)} kWh × ${fin.energy_price_eur_kwh} €/kWh`}
-                  result={`= ${n(diag.opex_savings_eur_per_year)} €/an`} />
-                <Formula
-                  text={`Emissions Scope 2 = ${n(diag.estimated_waste_kwh)} kWh × ${emFactor} kg/kWh ÷ 1000`}
-                  result={`= ${diag.wasted_tco2e} tCO₂e/an`} />
-                <Formula
-                  text={`Puissance PV = ${formatSurface(phys.solar_potential.usable_surface_m2)} ÷ 5.5 m²/kWp`}
-                  result={`= ${phys.solar_potential.peak_power_kwp.toFixed(1)} kWc`} />
-                <Formula
-                  text={`Production PV = ${phys.solar_potential.peak_power_kwp.toFixed(1)} kWc × ${phys.climate.dni_annual_kwh_m2} kWh/m²/an × 0.80`}
-                  result={`≈ ${n(phys.solar_potential.annual_production_kwh)} kWh/an`} />
-              </div>
+                    text={`Gaspillage = ${n(diag.theoretical_annual_consumption_kwh)} kWh × ${Math.round(diag.night_talon_pct * 100)}%`}
+                    result={`= ${n(diag.estimated_waste_kwh)} kWh/an`} />
+                  <Formula
+                    text={`Coût gaspillage = ${n(diag.estimated_waste_kwh)} kWh × ${fin.energy_price_eur_kwh} €/kWh`}
+                    result={`= ${n(diag.opex_savings_eur_per_year)} €/an`} />
+                  <Formula
+                    text={`Emissions Scope 2 = ${n(diag.estimated_waste_kwh)} kWh × ${emFactor} kg/kWh ÷ 1000`}
+                    result={`= ${diag.wasted_tco2e} tCO₂e/an`} />
+                  <Formula
+                    text={`Puissance PV = ${formatSurface(phys.solar_potential.usable_surface_m2)} ÷ 5.5 m²/kWp`}
+                    result={`= ${phys.solar_potential.peak_power_kwp.toFixed(1)} kWc`} />
+                  <Formula
+                    text={`Production PV = ${phys.solar_potential.peak_power_kwp.toFixed(1)} kWc × ${phys.climate.dni_annual_kwh_m2} kWh/m²/an × 0.80`}
+                    result={`≈ ${n(phys.solar_potential.annual_production_kwh)} kWh/an`} />
+                </div>
 
-              {/* D. Marges */}
-              <div style={{ marginBottom: 0 }}>
-                <AnnexTitle>D. Marges &amp; Incertitudes</AnnexTitle>
-                <AppRow label="Type de données"
-                  value={isRealData
-                    ? "Enedis / Linky — mesures terrain directes"
-                    : "Synthétique — profil sectoriel IEA"} />
-                <AppRow label="Marge d'incertitude"
-                  value={isRealData ? "±5% (précision compteur)" : "±30% (variance sectorielle)"}
-                  note={isRealData ? undefined : "Scénario bas × 0.70 / Scénario haut × 1.30"} />
-                <AppRow label="Fiabilité de la surface"
-                  value={phys.roof_analysis.confidence}
-                  note={`Vision IA : ${formatSurface(phys.roof_analysis.surface_m2_vision)}${phys.footprint.area_m2 ? ` / OSM : ${formatSurface(phys.footprint.area_m2)}` : ""}`} />
-                <AppRow label="Modèle IA — analyse toiture"
-                  value="Modèle Vision IA propriétaire"
-                  note="temperature=0.1 · 3 tentatives · réponse JSON contrôlée" />
-                <AppRow label="Baseline ISO 50001"
-                  value={diag.iso_50001_assessment.has_quantified_baseline
-                    ? "Établie — talon documenté (§6.6)"
-                    : "Non établie — données insuffisantes"} />
-                <AppRow label="GetEcoPulse Grade"
-                  value={grade ?? "N/A"}
-                  note={grade
-                    ? `EUI vs médiane IEA ${euiMedian} kWh/m²/an (${NAF_LABELS[nafCode] ?? fin.naf_sector})`
-                    : "Surface insuffisante pour calculer l'EUI"} />
+                {/* D. Marges */}
+                <div style={{ marginBottom: 0 }}>
+                  <AnnexTitle>D. Marges &amp; Incertitudes</AnnexTitle>
+                  <AppRow label="Type de données"
+                    value={isRealData
+                      ? "Enedis / Linky — mesures terrain directes"
+                      : "Synthétique — profil sectoriel IEA"} />
+                  <AppRow label="Marge d'incertitude"
+                    value={isRealData ? "±5% (précision compteur)" : "±30% (variance sectorielle)"}
+                    note={isRealData ? undefined : "Scénario bas × 0.70 / Scénario haut × 1.30"} />
+                  <AppRow label="Fiabilité de la surface"
+                    value={phys.roof_analysis.confidence}
+                    note={`Vision IA : ${formatSurface(phys.roof_analysis.surface_m2_vision)}${phys.footprint.area_m2 ? ` / OSM : ${formatSurface(phys.footprint.area_m2)}` : ""}`} />
+                  <AppRow label="Modèle IA — analyse toiture"
+                    value="Modèle Vision IA propriétaire"
+                    note="temperature=0.1 · 3 tentatives · réponse JSON contrôlée" />
+                  <AppRow label="Baseline ISO 50001"
+                    value={diag.iso_50001_assessment.has_quantified_baseline
+                      ? "Établie — talon documenté (§6.6)"
+                      : "Non établie — données insuffisantes"} />
+                  <AppRow label="GetEcoPulse Grade"
+                    value={grade ?? "N/A"}
+                    note={grade
+                      ? `EUI vs médiane IEA ${euiMedian} kWh/m²/an (${NAF_LABELS[nafCode] ?? fin.naf_sector})`
+                      : "Surface insuffisante pour calculer l'EUI"} />
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+
+          </div>
 
           {/* Footer disclaimer */}
           <div style={{
             borderTop: `1px solid ${T.border}`, paddingTop: 10, paddingBottom: 4,
+            marginTop: 8,
           }}>
-            <p style={{ fontSize: 10, color: T.t400, margin: 0, textAlign: "center", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 9.5, color: T.t400, margin: 0, textAlign: "center", lineHeight: 1.5 }}>
               Ce rapport est généré automatiquement à titre informatif et ne constitue pas un audit
               énergétique réglementaire (décret tertiaire, BACS, CEE).
               Estimations basées sur données publiques et profils sectoriels IEA. — GetEcoPulse PoC v1.0
