@@ -44,6 +44,27 @@ const GRADE_CFG: Record<string, { bg: string; text: string; label: string }> = {
   F: { bg: "#7f1d1d", text: "#fca5a5", label: "Urgence d'action" },
 };
 
+/** Human-readable NAF sector labels (mirrored from config) */
+const NAF_LABELS: Record<string, string> = {
+  NAF_BUREAUX:      "Bureaux & Tertiaire",
+  NAF_INDUSTRIE:    "Industrie manufacturière",
+  NAF_ENTREPOT:     "Entrepôt & Logistique",
+  NAF_COMMERCE:     "Commerce & Distribution",
+  NAF_ENSEIGNEMENT: "Enseignement",
+  NAF_SANTE:        "Santé & Médico-social",
+  NAF_HOTELLERIE:   "Hôtellerie & Restauration",
+};
+
+/** French translation for Gemini roof_type enum values */
+const ROOF_TYPE_FR: Record<string, string> = {
+  flat:    "Plat",
+  gable:   "Deux pentes",
+  hip:     "Quatre pentes",
+  shed:    "Shed / Bâtière",
+  complex: "Complexe / Mixte",
+  unknown: "Indéterminé",
+};
+
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
 function azimuthLabel(deg: number) {
@@ -61,21 +82,21 @@ function n(v: number, decimals = 0) {
 
 /**
  * Format a surface value robustly.
- * Vision IA may return LaTeX-formatted strings (e.g. "$7~036~m^{2}$").
- * This strips all LaTeX artefacts before formatting with fr-FR locale.
+ * Handles both plain numbers (5400 → "5 400 m²") and LaTeX strings
+ * from Vision IA (e.g. "$7~036~m^{2}$" → "7 036 m²").
+ * Always returns a fr-FR locale formatted string with "m²" suffix.
  */
-function fmtSurface(raw: number | string): string {
-  const s = String(raw)
-    .replace(/\$/g, "")          // remove $ math delimiters
-    .replace(/~/g, "")           // remove LaTeX thin-space
-    .replace(/\^{?2}?/g, "")    // remove ^2 / ^{2} exponent
-    .replace(/[{}\\]/g, "")      // remove braces and backslashes
-    .replace(/[a-zA-Z]/g, "")   // remove any remaining letters (m, etc.)
-    .trim();
-  const num = parseFloat(s.replace(/\s/g, "").replace(",", "."));
-  if (isNaN(num)) return String(raw);
-  return new Intl.NumberFormat("fr-FR").format(Math.round(num)) + " m²";
-}
+const formatSurface = (val: number | string): string => {
+  // 1. Strip LaTeX artefacts: $, ~, ^, {, }
+  const s = String(val).replace(/[$~^{}]/g, "").trim();
+  // 2. Remove any trailing "m²" / "m2" so we can re-add it formatted
+  const numStr = s.replace(/m²|m2/gi, "").replace(/\s/g, "").replace(",", ".");
+  const num = parseFloat(numStr);
+  if (!isNaN(num) && num > 0) {
+    return new Intl.NumberFormat("fr-FR").format(Math.round(num)) + " m²";
+  }
+  return String(val); // fallback: return raw value
+};
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -204,7 +225,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
     const pc   = audit.plausibility_check;
 
     const dateStr = new Date().toLocaleDateString("fr-FR", {
-      day: "numeric", month: "long", year: "numeric",
+      day: "2-digit", month: "short", year: "numeric",
     });
 
     // Resolved values
@@ -228,12 +249,15 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
           left: -9999,
           top: 0,
           width: 920,
+          overflow: "hidden",
           background: "#0f172a",
           color: "#fff",
           // Arial is a system font guaranteed to be loaded before html2canvas fires —
           // avoids the cyrillic/glyph-swap artefact caused by async web-font loading.
           fontFamily: "Arial, Helvetica, sans-serif",
-          textRendering: "geometricPrecision",
+          fontVariantLigatures: "none",
+          WebkitFontSmoothing: "auto",
+          textRendering: "auto",
         }}
       >
         {/* ══════════════════════════════════════════════════════════
@@ -289,7 +313,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
         {/* ══════════════════════════════════════════════════════════
             BODY
         ══════════════════════════════════════════════════════════ */}
-        <div style={{ padding: "28px 36px", display: "flex", flexDirection: "column", gap: 30 }}>
+        <div style={{ padding: "28px 36px", display: "flex", flexDirection: "column", gap: 22 }}>
 
           {/* ──────────────────────────────────────────────────────
               SECTION 01 — Identité & Emprise
@@ -317,13 +341,13 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 10 }}>
               <Stat
                 label="Surface de calcul"
-                value={fmtSurface(phys.roof_analysis.surface_m2_used)}
+                value={formatSurface(phys.roof_analysis.surface_m2_used)}
                 sub={phys.footprint.source === "fallback" ? "Source : Vision IA" : `Source : ${phys.footprint.source}`}
                 lime
               />
               <Stat
                 label="Type de toit"
-                value={phys.roof_analysis.roof_type}
+                value={ROOF_TYPE_FR[phys.roof_analysis.roof_type] ?? phys.roof_analysis.roof_type}
                 sub={`Confiance : ${phys.roof_analysis.confidence}`}
               />
               <Stat
@@ -525,7 +549,8 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                     <p style={{ fontSize: 10.5, fontWeight: 600, color: "#fff", margin: 0 }}>
                       Effacement Talon de Nuit
                     </p>
-                    <p style={{ fontSize: 8.5, color: "#94a3b8", margin: 0 }}>Actions OPEX sans investissement lourd</p>
+                    <p style={{ fontSize: 8.5, color: "#94a3b8", margin: 0,
+                      whiteSpace: "normal", wordBreak: "break-word" }}>Actions OPEX sans investissement lourd</p>
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -664,12 +689,12 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 />
                 <AppRow
                   label="Surface Vision IA"
-                  value={fmtSurface(phys.roof_analysis.surface_m2_vision)}
+                  value={formatSurface(phys.roof_analysis.surface_m2_vision)}
                   note="Estimation Vision IA via image satellite"
                 />
                 <AppRow
                   label="Surface de calcul retenue"
-                  value={fmtSurface(phys.roof_analysis.surface_m2_used)}
+                  value={formatSurface(phys.roof_analysis.surface_m2_used)}
                   note={`Confiance : ${phys.roof_analysis.confidence}`}
                 />
                 {pc?.coherence_ratio != null && (
@@ -702,7 +727,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 />
                 <AppRow
                   label="Surface PV exploitable"
-                  value={fmtSurface(phys.solar_potential.usable_surface_m2)}
+                  value={formatSurface(phys.solar_potential.usable_surface_m2)}
                   note="= surface toiture × 0.85 (marge structurale) × facteur obstruction"
                 />
                 <AppRow
@@ -721,7 +746,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 </p>
                 <AppRow
                   label="Code NAF / Secteur"
-                  value={`${nafCode} — ${fin.naf_sector}`}
+                  value={`${nafCode} — ${NAF_LABELS[nafCode] ?? fin.naf_sector}`}
                 />
                 <AppRow
                   label="EUI de référence (calcul)"
@@ -771,7 +796,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   />
                 ) : (
                   <Formula
-                    text={`Conso. annuelle = ${fmtSurface(phys.roof_analysis.surface_m2_used)} × ${euiUsed} kWh/m²/an (EUI sectoriel)`}
+                    text={`Conso. annuelle = ${formatSurface(phys.roof_analysis.surface_m2_used)} × ${euiUsed} kWh/m²/an (EUI sectoriel)`}
                     result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`}
                   />
                 )}
@@ -789,7 +814,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   result={`= ${diag.wasted_tco2e} tCO₂e/an`}
                 />
                 <Formula
-                  text={`Puissance PV = ${fmtSurface(phys.solar_potential.usable_surface_m2)} ÷ 5.5 m²/kWp`}
+                  text={`Puissance PV = ${formatSurface(phys.solar_potential.usable_surface_m2)} ÷ 5.5 m²/kWp`}
                   result={`= ${phys.solar_potential.peak_power_kwp.toFixed(1)} kWc`}
                 />
                 <Formula
@@ -799,7 +824,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
               </div>
 
               {/* ── D. Marges & incertitudes ────────────────────── */}
-              <div>
+              <div style={{ marginBottom: 0 }}>
                 <p style={{ fontSize: 9.5, fontWeight: 700, color: "#bef264",
                   letterSpacing: "0.06em", margin: "0 0 8px",
                   textTransform: "uppercase" }}>
@@ -821,7 +846,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 <AppRow
                   label="Fiabilité de la surface"
                   value={phys.roof_analysis.confidence}
-                  note={`Vision IA : ${fmtSurface(phys.roof_analysis.surface_m2_vision)}${phys.footprint.area_m2 ? ` / OSM : ${fmtSurface(phys.footprint.area_m2)}` : ""}`}
+                  note={`Vision IA : ${formatSurface(phys.roof_analysis.surface_m2_vision)}${phys.footprint.area_m2 ? ` / OSM : ${formatSurface(phys.footprint.area_m2)}` : ""}`}
                 />
                 <AppRow
                   label="Modèle IA — analyse toiture"
@@ -838,40 +863,27 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   label="GetEcoPulse Grade"
                   value={grade ?? "N/A"}
                   note={grade
-                    ? `EUI mesuré vs médiane IEA ${euiMedian} kWh/m²/an (${fin.naf_sector})`
+                    ? `EUI mesuré vs médiane IEA ${euiMedian} kWh/m²/an (${NAF_LABELS[nafCode] ?? fin.naf_sector})`
                     : "Surface insuffisante pour calculer l'EUI"}
                 />
               </div>
             </div>
           </section>
 
-          {/* ══════════════════════════════════════════════════════════
-              REPORT FOOTER
-          ══════════════════════════════════════════════════════════ */}
-          <footer style={{
-            borderTop: "1px solid rgba(71,85,105,0.4)",
-            paddingTop: 14,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 20,
+          {/* Footer disclaimer — kept minimal to avoid ghost 3rd page.
+              Full date/page-number/disclaimer is injected by jsPDF in pdf-export.ts */}
+          <div style={{
+            borderTop: "1px solid rgba(71,85,105,0.25)",
+            marginTop: 4,
+            paddingTop: 8,
+            paddingBottom: 6,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-              <span style={{ fontSize: 10, color: "#bef264", fontWeight: 800 }}>GetEcoPulse</span>
-              <span style={{ fontSize: 8.5, color: "#475569" }}>— getecopulse.fr</span>
-            </div>
-            <p style={{ fontSize: 8, color: "#475569", textAlign: "center",
-              margin: 0, maxWidth: 420, lineHeight: 1.5 }}>
-              Ce rapport est généré automatiquement à titre informatif et ne constitue pas un
-              audit énergétique réglementaire (décret tertiaire, BACS, CEE). Les estimations
-              sont basées sur des données publiques et des profils sectoriels IEA.
+            <p style={{ fontSize: 7, color: "#334155", margin: 0, textAlign: "center", lineHeight: 1.4 }}>
+              Ce rapport est généré automatiquement à titre informatif et ne constitue pas un audit
+              énergétique réglementaire (décret tertiaire, BACS, CEE). Estimations basées sur données
+              publiques et profils sectoriels IEA. — GetEcoPulse PoC v1.0
             </p>
-            <p style={{ fontSize: 8, color: "#475569", textAlign: "right",
-              margin: 0, flexShrink: 0 }}>
-              Généré le {dateStr}<br />
-              <span style={{ color: "#334155" }}>GetEcoPulse PoC v1.0</span>
-            </p>
-          </footer>
+          </div>
 
         </div>
       </div>

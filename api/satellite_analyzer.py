@@ -328,8 +328,9 @@ class BuildingAnalyzer:
         """
         If the Nominatim parcel is larger than the threshold, replace its area_m2
         with the sum of individual building footprints found by Overpass inside the
-        site boundary. The satellite image is still centred/zoomed on the full parcel
-        so the whole site is visible.
+        site boundary.  The satellite image is then re-centred and re-zoomed on the
+        buildings' combined bbox (not the full zone) so the actual rooftops fill the
+        frame rather than showing the entire industrial estate.
         """
         if not base_result.get("bbox"):
             return base_result
@@ -348,10 +349,29 @@ class BuildingAnalyzer:
         total_roof = sum(b["area_m2"] for b in buildings)
         print(f"    [Overpass] {len(buildings)} building(s) inside site — total roof: {total_roof:.0f} m2")
 
-        base_result["area_m2"]       = round(total_roof, 1)
-        base_result["site_area_m2"]  = round(parcel_area, 1)
+        base_result["area_m2"]        = round(total_roof, 1)
+        base_result["site_area_m2"]   = round(parcel_area, 1)
         base_result["building_count"] = len(buildings)
-        base_result["buildings"]     = buildings
+        base_result["buildings"]      = buildings
+
+        # Re-centre and re-zoom on the buildings' combined bbox so the satellite
+        # image frames the actual rooftops instead of the whole industrial zone.
+        all_nodes = [n for b in buildings for n in b["nodes_latlon"]]
+        if all_nodes:
+            b_lats = [n[0] for n in all_nodes]
+            b_lons = [n[1] for n in all_nodes]
+            buildings_bbox = {
+                "min_lat": min(b_lats), "max_lat": max(b_lats),
+                "min_lon": min(b_lons), "max_lon": max(b_lons),
+            }
+            c_lat = sum(b_lats) / len(b_lats)
+            c_lon = sum(b_lons) / len(b_lons)
+            zoom  = _optimal_zoom(c_lat, buildings_bbox, ov.image_padding_factor, ov.zoom_min, ov.zoom_max)
+            base_result["centroid_lat"] = round(c_lat, 7)
+            base_result["centroid_lon"] = round(c_lon, 7)
+            base_result["zoom"]         = zoom
+            print(f"    [refine] buildings bbox → zoom: {zoom}  centroid: ({c_lat:.5f}, {c_lon:.5f})")
+
         return base_result
 
     def _query_buildings_in_bbox(
@@ -460,17 +480,18 @@ class BuildingAnalyzer:
             area_str = f"{osm_area_m2:.0f} m²" if osm_area_m2 else "unknown"
 
             prompt = (
-                "You are a building energy auditor verifying an audit result.\n\n"
-                f"Address: {address}\n"
-                f"NAF sector: {naf_sector}\n"
-                f"Measured building footprint (OSM): {area_str}\n\n"
-                "Search for information about this address/company, then answer:\n"
-                "1. What type of activity or business is located at this address?\n"
-                f"2. Is a building footprint of {area_str} plausible for this activity?\n"
-                "3. Your confidence level in this assessment.\n\n"
-                "Respond ONLY with valid JSON — no markdown fences, no extra text:\n"
+                "Tu es un auditeur énergétique bâtiment chargé de vérifier un résultat d'audit.\n\n"
+                f"Adresse : {address}\n"
+                f"Secteur NAF : {naf_sector}\n"
+                f"Emprise bâtimentaire mesurée (OSM) : {area_str}\n\n"
+                "Recherche des informations sur cette adresse/entreprise, puis réponds :\n"
+                "1. Quel type d'activité ou d'entreprise est situé à cette adresse ?\n"
+                f"2. Une emprise bâtimentaire de {area_str} est-elle plausible pour cette activité ?\n"
+                "3. Ton niveau de confiance dans cette évaluation.\n\n"
+                "IMPORTANT : Réponds UNIQUEMENT en français pour 'activity_type' et 'reasoning'.\n"
+                "Réponds UNIQUEMENT avec un objet JSON valide — sans markdown, sans texte hors JSON :\n"
                 '{"activity_type": "...", "surface_plausibility": "high|medium|low", '
-                '"confidence": "high|medium|low", "reasoning": "one concise sentence"}'
+                '"confidence": "high|medium|low", "reasoning": "une phrase concise en français"}'
             )
 
             response = client.models.generate_content(
@@ -662,17 +683,17 @@ class BuildingAnalyzer:
         print("[4/6] Analysing roof with Gemini Vision...")
 
         prompt = (
-            "You are a professional building energy auditor specialising in remote roof analysis. "
-            "You will be given a satellite image of a building rooftop.\n\n"
-            "Your task is to estimate the following ONLY from what is visible in the image:\n"
-            "1. surface_m2: The main usable roof surface area in square metres (integer or float).\n"
-            "2. azimuth_degrees: Primary roof orientation in degrees (0=North, 90=East, 180=South, 270=West).\n"
-            "3. roof_type: One of [flat, gable, hip, shed, complex, unknown].\n"
-            "4. obstructions: A JSON list of visible obstructions (chimneys, HVAC units, skylights, antennas, etc.).\n"
-            "5. confidence: Your overall confidence level — one of [high, medium, low].\n"
-            "6. reasoning: One or two sentences explaining your estimates.\n\n"
-            "CRITICAL: Respond ONLY with a valid JSON object matching the schema. "
-            "No markdown fences, no extra text, no comments."
+            "Tu es un auditeur énergétique bâtiment spécialisé dans l'analyse de toitures par télédétection. "
+            "Tu vas recevoir une image satellite d'une toiture de bâtiment.\n\n"
+            "Ton rôle est d'estimer les éléments suivants à partir de ce qui est visible dans l'image :\n"
+            "1. surface_m2 : Surface utile principale de la toiture en mètres carrés (entier ou décimal).\n"
+            "2. azimuth_degrees : Orientation principale de la toiture en degrés (0=Nord, 90=Est, 180=Sud, 270=Ouest).\n"
+            "3. roof_type : Un parmi [flat, gable, hip, shed, complex, unknown] — garde ces valeurs exactes en anglais.\n"
+            "4. obstructions : Liste JSON des obstructions visibles (cheminées, unités CVC, lanterneaux, antennes, etc.) — en français.\n"
+            "5. confidence : Ton niveau de confiance global — un parmi [high, medium, low].\n"
+            "6. reasoning : Une ou deux phrases expliquant tes estimations — OBLIGATOIREMENT EN FRANÇAIS.\n\n"
+            "CRITIQUE : Réponds UNIQUEMENT avec un objet JSON valide correspondant au schéma. "
+            "Pas de balises markdown, pas de texte hors JSON, pas de commentaires."
         )
 
         client = _google_genai.Client(api_key=settings.gemini_api_key)
@@ -778,7 +799,7 @@ class BuildingAnalyzer:
                         "lat": footprint["centroid_lat"],
                         "lon": footprint["centroid_lon"],
                     },
-                    "zoom_used": footprint["zoom"],
+                    "zoom_used": footprint["zoom"] - 1,  # actual Mapbox fetch zoom (computed - 1 for @2x)
                 },
                 "climate": climate,
                 "roof_analysis": {
