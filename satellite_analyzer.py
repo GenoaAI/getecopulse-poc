@@ -1,11 +1,9 @@
 import os
-import base64
 import math
 import requests
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-import litellm
 
 from config import settings
 from consumption_generator import generate_load_profile
@@ -657,10 +655,9 @@ class BuildingAnalyzer:
 
     def analyze_roof_with_vision(self, image_bytes: bytes) -> RoofAnalysis:
         """Send satellite image bytes to Gemini Vision and extract structured roof data."""
-        print("[5/5] Analysing roof with Gemini Vision...")
-        image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
+        print("[4/6] Analysing roof with Gemini Vision...")
 
-        system_prompt = (
+        prompt = (
             "You are a professional building energy auditor specialising in remote roof analysis. "
             "You will be given a satellite image of a building rooftop.\n\n"
             "Your task is to estimate the following ONLY from what is visible in the image:\n"
@@ -674,36 +671,33 @@ class BuildingAnalyzer:
             "No markdown fences, no extra text, no comments."
         )
 
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": system_prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{image_b64}"},
-                    },
-                ],
-            }
-        ]
+        client = _google_genai.Client(api_key=settings.gemini_api_key)
+        image_part = _google_types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
 
-        response = litellm.completion(
-            model="gemini/gemini-2.5-flash",
-            messages=messages,
-            response_format={"type": "json_object"},
-            temperature=0.1,
-            num_retries=3,
-        )
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=[image_part, prompt],
+                    config=_google_types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                    ),
+                )
+                raw_json = response.text.strip()
+                if raw_json.startswith("```"):
+                    raw_json = raw_json.split("```")[1]
+                    if raw_json.startswith("json"):
+                        raw_json = raw_json[4:]
+                parsed = RoofAnalysis.model_validate_json(raw_json)
+                print(f"    -> Roof type: {parsed.roof_type}  |  Surface: {parsed.surface_m2} m2  |  Azimuth: {parsed.azimuth_degrees} deg")
+                return parsed
+            except Exception as exc:
+                last_exc = exc
+                print(f"    [WARN] Vision attempt {attempt + 1} failed: {exc}")
 
-        raw_json = response.choices[0].message.content.strip()
-        if raw_json.startswith("```"):
-            raw_json = raw_json.split("```")[1]
-            if raw_json.startswith("json"):
-                raw_json = raw_json[4:]
-
-        parsed = RoofAnalysis.model_validate_json(raw_json)
-        print(f"    -> Roof type: {parsed.roof_type}  |  Surface: {parsed.surface_m2} m2  |  Azimuth: {parsed.azimuth_degrees} deg")
-        return parsed
+        raise RuntimeError(f"Gemini Vision failed after 3 attempts: {last_exc}")
 
     # ------------------------------------------------------------------
     # Step 5 — Final assembly (shared by blocking + streaming paths)
