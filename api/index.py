@@ -142,14 +142,14 @@ async def audit_building(payload: AuditRequest):
             if uploader is not None:
                 satellite_url = await asyncio.to_thread(uploader, image_bytes, payload.address)
 
-            # ── Step 4 — Climate + Gemini Vision (heaviest step) ─────────
-            yield _sse({"step": 4, "total": 6, "status": "Analyse climatique et Vision IA (Gemini)…"})
+            # ── Step 4 — Climate + Vision IA (heaviest step) ─────────────
+            yield _sse({"step": 4, "total": 6, "status": "Analyse climatique et Vision IA…"})
             climate, roof = await asyncio.gather(
                 asyncio.to_thread(analyzer.fetch_climate_data, lat, lon),
                 asyncio.to_thread(analyzer.analyze_roof_with_vision, image_bytes),
             )
 
-            # ── Step 5 — Business context (Gemini + Google Search) ───────
+            # ── Step 5 — Business context (Vision IA + web search) ──────
             yield _sse({"step": 5, "total": 6, "status": "Vérification du contexte métier…"})
             plausibility = await asyncio.to_thread(
                 analyzer._check_plausibility,

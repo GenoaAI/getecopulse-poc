@@ -61,7 +61,7 @@ function n(v: number, decimals = 0) {
 
 /**
  * Format a surface value robustly.
- * Gemini Vision may return LaTeX-formatted strings (e.g. "$7~036~m^{2}$").
+ * Vision IA may return LaTeX-formatted strings (e.g. "$7~036~m^{2}$").
  * This strips all LaTeX artefacts before formatting with fr-FR locale.
  */
 function fmtSurface(raw: number | string): string {
@@ -656,7 +656,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 <AppRow
                   label="Source de la surface"
                   value={phys.footprint.source === "fallback"
-                    ? "Vision IA (Gemini 2.5 Flash)"
+                    ? "Vision IA"
                     : phys.footprint.source.toUpperCase()}
                   note={phys.footprint.area_m2
                     ? `Empreinte OSM brute : ${n(phys.footprint.area_m2)} m²`
@@ -665,7 +665,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 <AppRow
                   label="Surface Vision IA"
                   value={fmtSurface(phys.roof_analysis.surface_m2_vision)}
-                  note="Estimation Gemini 2.5 Flash via image satellite"
+                  note="Estimation Vision IA via image satellite"
                 />
                 <AppRow
                   label="Surface de calcul retenue"
@@ -825,7 +825,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 />
                 <AppRow
                   label="Modèle IA — analyse toiture"
-                  value="Gemini 2.5 Flash (Google DeepMind)"
+                  value="Modèle Vision IA propriétaire"
                   note="temperature=0.1 · 3 tentatives · réponse JSON contrôlée"
                 />
                 <AppRow
