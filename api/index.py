@@ -1,3 +1,13 @@
+import sys
+import os
+
+# Vercel's runtime adds the project root to sys.path, not api/ subdirectory.
+# Insert api/'s own directory so sibling modules (config, satellite_analyzer, …)
+# resolve correctly both on Vercel and in local dev.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
 import asyncio
 import json
 from contextlib import asynccontextmanager
