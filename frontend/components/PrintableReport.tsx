@@ -59,6 +59,24 @@ function n(v: number, decimals = 0) {
   return v.toLocaleString("fr-FR", { maximumFractionDigits: decimals });
 }
 
+/**
+ * Format a surface value robustly.
+ * Gemini Vision may return LaTeX-formatted strings (e.g. "$7~036~m^{2}$").
+ * This strips all LaTeX artefacts before formatting with fr-FR locale.
+ */
+function fmtSurface(raw: number | string): string {
+  const s = String(raw)
+    .replace(/\$/g, "")          // remove $ math delimiters
+    .replace(/~/g, "")           // remove LaTeX thin-space
+    .replace(/\^{?2}?/g, "")    // remove ^2 / ^{2} exponent
+    .replace(/[{}\\]/g, "")      // remove braces and backslashes
+    .replace(/[a-zA-Z]/g, "")   // remove any remaining letters (m, etc.)
+    .trim();
+  const num = parseFloat(s.replace(/\s/g, "").replace(",", "."));
+  if (isNaN(num)) return String(raw);
+  return new Intl.NumberFormat("fr-FR").format(Math.round(num)) + " m²";
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 /** Simple SVG load-profile bar chart — no external library */
@@ -121,6 +139,7 @@ function Stat({ label, value, sub, lime }: {
     <div style={{
       background: "#1e293b", border: "1px solid rgba(71,85,105,0.4)",
       borderRadius: 10, padding: "11px 13px",
+      pageBreakInside: "avoid", breakInside: "avoid",
     }}>
       <p style={{ fontSize: 8, color: "#94a3b8", textTransform: "uppercase",
         letterSpacing: "0.08em", margin: "0 0 3px 0" }}>{label}</p>
@@ -137,11 +156,14 @@ function AppRow({ label, value, note }: { label: string; value: string; note?: s
     <div style={{
       display: "flex", alignItems: "baseline", gap: 10,
       padding: "5px 0", borderBottom: "1px solid rgba(51,65,85,0.4)",
+      pageBreakInside: "avoid", breakInside: "avoid",
     }}>
-      <span style={{ width: 210, fontSize: 9.5, color: "#94a3b8", flexShrink: 0 }}>{label}</span>
-      <span style={{ flex: 1, fontSize: 9.5, color: "#e2e8f0", fontWeight: 500 }}>{value}</span>
+      <span style={{ width: 210, fontSize: 9.5, color: "#94a3b8", flexShrink: 0,
+        wordBreak: "break-word" }}>{label}</span>
+      <span style={{ flex: 1, fontSize: 9.5, color: "#e2e8f0", fontWeight: 500,
+        wordBreak: "break-word" }}>{value}</span>
       {note && <span style={{ fontSize: 8.5, color: "#64748b", textAlign: "right", flexShrink: 0,
-        maxWidth: 220 }}>{note}</span>}
+        maxWidth: 220, wordBreak: "break-word" }}>{note}</span>}
     </div>
   );
 }
@@ -182,7 +204,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
     const pc   = audit.plausibility_check;
 
     const dateStr = new Date().toLocaleDateString("fr-FR", {
-      year: "numeric", month: "long", day: "numeric",
+      day: "numeric", month: "long", year: "numeric",
     });
 
     // Resolved values
@@ -208,7 +230,10 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
           width: 920,
           background: "#0f172a",
           color: "#fff",
-          fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif",
+          // Arial is a system font guaranteed to be loaded before html2canvas fires —
+          // avoids the cyrillic/glyph-swap artefact caused by async web-font loading.
+          fontFamily: "Arial, Helvetica, sans-serif",
+          textRendering: "geometricPrecision",
         }}
       >
         {/* ══════════════════════════════════════════════════════════
@@ -235,7 +260,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 Rapport d&apos;Audit Énergétique Bâtiment
               </h1>
               <p style={{ fontSize: 11, color: "#94a3b8", margin: 0, maxWidth: 520,
-                lineHeight: 1.5 }}>
+                lineHeight: 1.5, wordBreak: "break-word", overflowWrap: "break-word" }}>
                 {audit.address}
               </p>
               <p style={{ fontSize: 10, color: "#64748b", margin: "6px 0 0",
@@ -292,7 +317,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 10 }}>
               <Stat
                 label="Surface de calcul"
-                value={`${n(phys.roof_analysis.surface_m2_used)} m²`}
+                value={fmtSurface(phys.roof_analysis.surface_m2_used)}
                 sub={phys.footprint.source === "fallback" ? "Source : Vision IA" : `Source : ${phys.footprint.source}`}
                 lime
               />
@@ -326,9 +351,8 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 ? <span style={{ color: "#34d399" }}>✅ Aucune</span>
                 : phys.roof_analysis.obstructions.join(", ")
               }
-              <span style={{ marginLeft: 20, color: "#64748b" }}>
-                Raisonnement IA : {phys.roof_analysis.reasoning.slice(0, 120)}
-                {phys.roof_analysis.reasoning.length > 120 ? "…" : ""}
+              <span style={{ marginLeft: 20, color: "#64748b", wordBreak: "break-word" }}>
+                Raisonnement IA : {phys.roof_analysis.reasoning}
               </span>
             </div>
 
@@ -488,6 +512,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
               <div style={{
                 background: "#1e293b", border: "1px solid rgba(190,242,100,0.45)",
                 borderRadius: 12, padding: "14px", position: "relative",
+                pageBreakInside: "avoid", breakInside: "avoid",
               }}>
                 <span style={{
                   position: "absolute", top: -10, left: 12,
@@ -526,6 +551,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
               <div style={{
                 background: "#1e293b", border: "1px solid rgba(96,165,250,0.35)",
                 borderRadius: 12, padding: "14px",
+                pageBreakInside: "avoid", breakInside: "avoid",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <span style={{ fontSize: 13 }}>☀️</span>
@@ -561,6 +587,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
               <div style={{
                 background: "#1e293b", border: "1px solid rgba(71,85,105,0.3)",
                 borderRadius: 12, padding: "14px", opacity: 0.55,
+                pageBreakInside: "avoid", breakInside: "avoid",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <span style={{ fontSize: 13 }}>🔥</span>
@@ -637,12 +664,12 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 />
                 <AppRow
                   label="Surface Vision IA"
-                  value={`${n(phys.roof_analysis.surface_m2_vision)} m²`}
+                  value={fmtSurface(phys.roof_analysis.surface_m2_vision)}
                   note="Estimation Gemini 2.5 Flash via image satellite"
                 />
                 <AppRow
                   label="Surface de calcul retenue"
-                  value={`${n(phys.roof_analysis.surface_m2_used)} m²`}
+                  value={fmtSurface(phys.roof_analysis.surface_m2_used)}
                   note={`Confiance : ${phys.roof_analysis.confidence}`}
                 />
                 {pc?.coherence_ratio != null && (
@@ -675,7 +702,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 />
                 <AppRow
                   label="Surface PV exploitable"
-                  value={`${n(phys.solar_potential.usable_surface_m2, 0)} m²`}
+                  value={fmtSurface(phys.solar_potential.usable_surface_m2)}
                   note="= surface toiture × 0.85 (marge structurale) × facteur obstruction"
                 />
                 <AppRow
@@ -721,11 +748,6 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   value={`${sector ? Math.round(sector.night_pct * 100) : Math.round(diag.night_talon_pct * 100)} %`}
                   note="Fraction de la consommation en dehors des heures d'exploitation"
                 />
-                <AppRow
-                  label="Facteur d'inactivité"
-                  value={`× ${inactivityFactor}`}
-                  note="Majoration du gaspillage (veilles machines, HVAC de garde)"
-                />
               </div>
 
               {/* ── C. Formules de calcul ───────────────────────── */}
@@ -749,7 +771,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   />
                 ) : (
                   <Formula
-                    text={`Conso. annuelle = ${n(phys.roof_analysis.surface_m2_used)} m² × ${euiUsed} kWh/m²/an (EUI sectoriel)`}
+                    text={`Conso. annuelle = ${fmtSurface(phys.roof_analysis.surface_m2_used)} × ${euiUsed} kWh/m²/an (EUI sectoriel)`}
                     result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`}
                   />
                 )}
@@ -767,7 +789,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   result={`= ${diag.wasted_tco2e} tCO₂e/an`}
                 />
                 <Formula
-                  text={`Puissance PV = ${n(phys.solar_potential.usable_surface_m2, 0)} m² ÷ 5.5 m²/kWp`}
+                  text={`Puissance PV = ${fmtSurface(phys.solar_potential.usable_surface_m2)} ÷ 5.5 m²/kWp`}
                   result={`= ${phys.solar_potential.peak_power_kwp.toFixed(1)} kWc`}
                 />
                 <Formula
@@ -799,7 +821,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 <AppRow
                   label="Fiabilité de la surface"
                   value={phys.roof_analysis.confidence}
-                  note={`Vision IA : ${n(phys.roof_analysis.surface_m2_vision)} m²${phys.footprint.area_m2 ? ` / OSM : ${n(phys.footprint.area_m2)} m²` : ""}`}
+                  note={`Vision IA : ${fmtSurface(phys.roof_analysis.surface_m2_vision)}${phys.footprint.area_m2 ? ` / OSM : ${fmtSurface(phys.footprint.area_m2)}` : ""}`}
                 />
                 <AppRow
                   label="Modèle IA — analyse toiture"
