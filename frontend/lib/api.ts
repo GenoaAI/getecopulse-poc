@@ -1,6 +1,8 @@
 import type { FeatureCollection } from "geojson";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Empty string = relative URL — works on Vercel (same domain) and locally when
+// NEXT_PUBLIC_API_URL is set (e.g. http://localhost:8000 in .env.local).
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // ---------------------------------------------------------------------------
 // Types
