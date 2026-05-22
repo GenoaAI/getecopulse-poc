@@ -602,7 +602,7 @@ class BuildingAnalyzer:
         # Mapbox URL format: /lon,lat,zoom/WxH@2x?access_token=...
         url = (
             f"{self.MAPBOX_STATIC_URL}"
-            f"/{lon},{lat},{zoom}"
+            f"/{lon},{lat},{zoom - 1}"   # -1 vs computed zoom: @2x resolution sits tighter than Google 640px
             f"/640x640@2x"
             f"?access_token={settings.mapbox_api_key}"
         )

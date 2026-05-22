@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
     # Fail fast if required secrets are missing
     assert settings.google_maps_api_key, "GOOGLE_MAPS_API_KEY is not set"
     assert settings.gemini_api_key,      "GEMINI_API_KEY is not set"
+    assert settings.mapbox_api_key,      "MAPBOX_API_KEY is not set"
     # Warn (not crash) if Supabase is not configured
     if supabase_manager.is_configured:
         print("[Supabase] Storage + DB configured — audits will be persisted.")

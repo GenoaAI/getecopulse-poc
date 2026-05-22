@@ -197,9 +197,6 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
     const grade    = diag.grade && diag.grade !== "N/A" ? diag.grade : null;
     const gradeCfg = grade ? (GRADE_CFG[grade] ?? GRADE_CFG.F) : null;
 
-    // Inactivity factor reverse-derived from diag
-    // gaspillage = conso × night_pct × 1.2  →  factor always 1.2 per config
-    const inactivityFactor = 1.2;
 
     return (
       <div
@@ -684,7 +681,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 <AppRow
                   label="Zoom satellite utilisé"
                   value={`Niveau ${phys.footprint.zoom_used}`}
-                  note="Google Maps Static API"
+                  note="Mapbox Static API — satellite-v9"
                 />
               </div>
 
@@ -758,7 +755,7 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 )}
 
                 <Formula
-                  text={`Gaspillage talon = ${n(diag.theoretical_annual_consumption_kwh)} kWh × ${Math.round(diag.night_talon_pct * 100)}% (talon nuit) × ${inactivityFactor} (inactivité)`}
+                  text={`Gaspillage talon = ${n(diag.theoretical_annual_consumption_kwh)} kWh × ${Math.round(diag.night_talon_pct * 100)}% (talon nocturne sectoriel)`}
                   result={`= ${n(diag.estimated_waste_kwh)} kWh/an`}
                 />
                 <Formula

@@ -804,7 +804,7 @@ export default function Home() {
                             <Award className="w-3.5 h-3.5 text-slate-400" />
                             <p className="text-xs text-slate-400 uppercase tracking-widest">GetEcoPulse Grade</p>
                           </div>
-                          <p className={`text-sm font-semibold ${cfg.text.replace("text-", "text-")}`}>
+                          <p className={`text-sm font-semibold ${cfg.text}`}>
                             {cfg.label}
                           </p>
                           <p className="text-[10px] text-slate-500 mt-0.5">
