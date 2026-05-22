@@ -1,6 +1,6 @@
 /**
  * GetEcoPulse — PDF export
- * Captures the audit results <main> element as a high-resolution WYSIWYG PDF.
+ * Captures the off-screen PrintableReport element as a high-resolution WYSIWYG PDF.
  * Uses html2canvas (screenshot) + jsPDF (A4 layout).
  * Dynamically imported to keep the main bundle small.
  */

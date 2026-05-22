@@ -68,9 +68,10 @@ function LoadProfileSvg({
   const count  = labels.length;
   const maxVal = Math.max(...weekday_kw, ...weekend_kw, 0.01);
   const H = 88;
-  const BW = 11; // bar width
-  const G  = 1;  // gap between pair
-  const PW = BW * 2 + G + 3; // pair width
+  // Adaptive sizing: always fit within 800px regardless of slot count (24h or 48×30min)
+  const PW = Math.max(14, Math.floor(800 / count)); // pair width per slot
+  const BW = Math.max(4,  Math.floor(PW * 0.42));   // individual bar width
+  const G  = 1;
   const W  = count * PW;
 
   return (
@@ -370,7 +371,8 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                 Profil de charge journalier
                 {isRealData ? " — données Enedis réelles" : " — estimation sectorielle"}
               </p>
-              <div style={{ overflowX: "auto" }}>
+              {/* SVG sizing is adaptive — always fits, no overflow clipping by html2canvas */}
+              <div style={{ overflow: "hidden" }}>
                 <LoadProfileSvg {...diag.load_profile} />
               </div>
               <div style={{ display: "flex", gap: 18, marginTop: 8, fontSize: 8.5, color: "#64748b" }}>
@@ -736,12 +738,27 @@ const PrintableReport = React.forwardRef<HTMLDivElement, PrintableReportProps>(
                   textTransform: "uppercase" }}>
                   C. Formules de Calcul
                 </p>
+
+                {/*
+                  Consommation — two cases:
+                  • Synthetic : surface × EUI (calculated)
+                  • Real Linky : direct meter reading (NOT calculated — showing the formula
+                    as surface×EUI would be arithmetically false)
+                */}
+                {isRealData ? (
+                  <Formula
+                    text="Consommation annuelle = Mesure directe Enedis / Linky (compteur Linky)"
+                    result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`}
+                  />
+                ) : (
+                  <Formula
+                    text={`Conso. annuelle = ${n(phys.roof_analysis.surface_m2_used)} m² × ${euiUsed} kWh/m²/an (EUI sectoriel)`}
+                    result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`}
+                  />
+                )}
+
                 <Formula
-                  text={`Conso. annuelle = ${n(phys.roof_analysis.surface_m2_used)} m² × ${euiUsed} kWh/m²/an`}
-                  result={`= ${n(diag.theoretical_annual_consumption_kwh)} kWh/an`}
-                />
-                <Formula
-                  text={`Gaspillage talon = ${n(diag.theoretical_annual_consumption_kwh)} kWh × ${Math.round(diag.night_talon_pct * 100)}% × ${inactivityFactor} (inactivité)`}
+                  text={`Gaspillage talon = ${n(diag.theoretical_annual_consumption_kwh)} kWh × ${Math.round(diag.night_talon_pct * 100)}% (talon nuit) × ${inactivityFactor} (inactivité)`}
                   result={`= ${n(diag.estimated_waste_kwh)} kWh/an`}
                 />
                 <Formula
