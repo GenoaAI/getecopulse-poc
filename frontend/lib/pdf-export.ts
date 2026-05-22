@@ -22,7 +22,7 @@ export async function exportAuditPdf(
     backgroundColor: "#0f172a", // dark background
     logging: false,
     scrollX: 0,
-    scrollY: -window.scrollY,    // capture from visible top
+    scrollY: 0,                  // PrintableReport is at absolute top — no scroll offset needed
   });
 
   // ── PDF constants (A4 mm) ────────────────────────────────────────────────
@@ -113,5 +113,5 @@ export async function exportAuditPdf(
     pdf.text(`${i + 1} / ${PAGE_COUNT}`, PAGE_W - MARGIN, PAGE_H - 2.5, { align: "right" });
   }
 
-  pdf.save(`GetEcoPulse_${fileSlug}_${isoDate}.pdf`);
+  pdf.save(`GetEcoPulse_Audit_${isoDate}_${fileSlug}.pdf`);
 }

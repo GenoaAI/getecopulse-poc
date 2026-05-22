@@ -29,6 +29,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { exportAuditPdf } from "@/lib/pdf-export";
 import AuthModal from "@/components/AuthModal";
 import CsvUpload from "@/components/CsvUpload";
+import PrintableReport from "@/components/PrintableReport";
 
 // Critical: react-leaflet must be loaded client-side only (no SSR)
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
@@ -253,8 +254,8 @@ export default function Home() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  // Ref on the results <main> for PDF capture
-  const mainRef = useRef<HTMLElement>(null);
+  // Ref on the off-screen PrintableReport for PDF capture
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Ref for auto-scroll to consumption section when real data loads
   const section02Ref = useRef<HTMLElement>(null);
@@ -286,10 +287,10 @@ export default function Home() {
   }, []);
 
   async function handleExportPdf() {
-    if (!mainRef.current || !audit) return;
+    if (!printRef.current || !audit) return;
     setPdfLoading(true);
     try {
-      await exportAuditPdf(mainRef.current, audit.address);
+      await exportAuditPdf(printRef.current, audit.address);
     } finally {
       setPdfLoading(false);
     }
@@ -336,7 +337,7 @@ export default function Home() {
   const showResults = audit !== null || loading;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white flex flex-col">
+    <div className="relative min-h-screen bg-[#0f172a] text-white flex flex-col overflow-x-hidden">
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur border-b border-slate-800 px-6 py-4">
@@ -482,7 +483,7 @@ export default function Home() {
           RESULTS — 3 narrative sections
       ═══════════════════════════════════════════════════════════════════ */}
       {showResults && (
-        <main ref={mainRef} className="max-w-6xl mx-auto w-full px-6 py-8 flex flex-col gap-14">
+        <main className="max-w-6xl mx-auto w-full px-6 py-8 flex flex-col gap-14">
 
           {/* ────────────────────────────────────────────────────────────
               SECTION 01 — Identité & Emprise
@@ -1031,6 +1032,17 @@ export default function Home() {
             setShowAuth(false);
             setShowCsvUpload(true);
           }}
+        />
+      )}
+
+      {/* ── Off-screen PrintableReport — captured by html2canvas for PDF export ── */}
+      {audit && diag && (
+        <PrintableReport
+          ref={printRef}
+          audit={audit}
+          diag={diag}
+          nafCode={nafCode}
+          isRealData={!!realDiag}
         />
       )}
     </div>
