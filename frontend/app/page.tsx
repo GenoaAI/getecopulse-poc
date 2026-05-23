@@ -29,7 +29,6 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { exportAuditPdf } from "@/lib/pdf-export";
 import AuthModal from "@/components/AuthModal";
 import CsvUpload from "@/components/CsvUpload";
-import PrintableReport from "@/components/PrintableReport";
 
 // Critical: react-leaflet must be loaded client-side only (no SSR)
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
@@ -254,9 +253,6 @@ export default function Home() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
-  // Ref on the off-screen PrintableReport for PDF capture
-  const printRef = useRef<HTMLDivElement>(null);
-
   // Ref for auto-scroll to consumption section when real data loads
   const section02Ref = useRef<HTMLElement>(null);
 
@@ -287,10 +283,10 @@ export default function Home() {
   }, []);
 
   async function handleExportPdf() {
-    if (!printRef.current || !audit) return;
+    if (!audit || !diag) return;
     setPdfLoading(true);
     try {
-      await exportAuditPdf(printRef.current, audit.address);
+      await exportAuditPdf(audit, diag, nafCode, !!realDiag);
     } finally {
       setPdfLoading(false);
     }
@@ -1035,16 +1031,6 @@ export default function Home() {
         />
       )}
 
-      {/* ── Off-screen PrintableReport — captured by html2canvas for PDF export ── */}
-      {audit && diag && (
-        <PrintableReport
-          ref={printRef}
-          audit={audit}
-          diag={diag}
-          nafCode={nafCode}
-          isRealData={!!realDiag}
-        />
-      )}
     </div>
   );
 }

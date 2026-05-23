@@ -1,103 +1,78 @@
 /**
- * GetEcoPulse — PDF export
- * Captures the off-screen PrintableReport element as a high-resolution WYSIWYG PDF.
- * Uses html2canvas (screenshot) + jsPDF (A4 layout).
- * Dynamically imported to keep the main bundle small.
+ * GetEcoPulse — PDF export (react-pdf/renderer)
+ *
+ * Generates a vector A4 PDF client-side using @react-pdf/renderer.
+ * • No html2canvas / jsPDF — text is selectable, fonts are crisp.
+ * • Satellite image is pre-fetched as a base64 data URI to avoid CORS
+ *   issues inside the renderer's internal fetch.
+ * • Dynamic imports keep the renderer (~1 MB) out of the initial bundle.
+ * • Must be called from a client-side event handler (never during SSR).
  */
 
+import { createElement } from "react";
+import type { AuditResult } from "@/lib/api";
+
+// ── Helper: URL → base64 data URI ────────────────────────────────────────────
+
+async function fetchAsDataUri(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror   = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+// ── Main export function ──────────────────────────────────────────────────────
+
 export async function exportAuditPdf(
-  mainEl: HTMLElement,
-  address: string,
+  audit:      AuditResult,
+  diag:       AuditResult["diagnostic"],
+  nafCode:    string,
+  isRealData: boolean,
 ): Promise<void> {
-  // Dynamic imports — never shipped to users who don't click "Export"
-  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-    import("jspdf"),
-    import("html2canvas"),
+  // ── 1. Pre-fetch satellite image ─────────────────────────────────────────
+  const satelliteDataUri = audit.satellite_image_url
+    ? await fetchAsDataUri(audit.satellite_image_url)
+    : null;
+
+  // ── 2. Dynamic imports (deferred until user clicks "Export") ─────────────
+  const [{ pdf }, { default: AuditPdfDocument }] = await Promise.all([
+    import("@react-pdf/renderer"),
+    import("@/components/AuditPdfDocument"),
   ]);
 
-  const pages = Array.from(mainEl.children) as HTMLElement[];
-  if (pages.length === 0) return;
-
-  // ── PDF constants (A4 mm) ────────────────────────────────────────────────
-  const PAGE_W   = 210;
-  const PAGE_H   = 297;
-  const MARGIN   = 8;
-  const HEADER_H = 15;
-  const FOOTER_H = 8;
-  const CONTENT_W = PAGE_W - 2 * MARGIN;
-
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-  const dateStr = new Date().toLocaleDateString("fr-FR", {
-    year: "numeric", month: "long", day: "numeric",
+  // ── 3. Render to Blob ─────────────────────────────────────────────────────
+  const element = createElement(AuditPdfDocument, {
+    audit,
+    diag,
+    nafCode,
+    isRealData,
+    satelliteDataUri,
   });
-  const shortAddr = address.length > 72 ? address.slice(0, 69) + "…" : address;
-  const fileSlug  = address.split(",")[0].trim().replace(/\s+/g, "_");
-  const isoDate   = new Date().toISOString().slice(0, 10);
 
-  // ── Pages Loop ───────────────────────────────────────────────────────────
-  for (let i = 0; i < pages.length; i++) {
-    if (i > 0) pdf.addPage();
+  // AuditPdfDocument renders a <Document> as its root, satisfying react-pdf's
+  // requirement.  Cast here because createElement infers AuditPdfProps, not
+  // DocumentProps, even though the runtime element is identical.
+  const blob = await pdf(element as Parameters<typeof pdf>[0]).toBlob();
 
-    const pageEl = pages[i];
-    const canvas = await html2canvas(pageEl, {
-      scale: 2,                    // retina quality
-      useCORS: true,               // satellite image (external URL)
-      backgroundColor: "#ffffff",  // force white background capture
-      logging: false,
-      scrollX: 0,
-      scrollY: 0,
-    });
+  // ── 4. Trigger browser download ───────────────────────────────────────────
+  const isoDate  = new Date().toISOString().slice(0, 10);
+  const fileSlug = audit.address.split(",")[0].trim().replace(/\s+/g, "_");
+  const filename = `GetEcoPulse_Audit_${isoDate}_${fileSlug}.pdf`;
 
-    // Header bar
-    pdf.setFillColor(15, 23, 42);
-    pdf.rect(0, 0, PAGE_W, HEADER_H, "F");
-
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(9);
-    pdf.setTextColor(190, 242, 100);   // lime-300 (#bef264)
-    pdf.text("GetEcoPulse", MARGIN, 9.5);
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(7);
-    pdf.setTextColor(100, 116, 139);   // slate-500
-    pdf.text(shortAddr, MARGIN + 27, 9.5);
-
-    pdf.setTextColor(71, 85, 105);     // slate-600
-    pdf.text("Audit énergétique automatisé", PAGE_W - MARGIN, 9.5, { align: "right" });
-
-    // Thin lime separator line
-    pdf.setDrawColor(190, 242, 100);
-    pdf.setLineWidth(0.3);
-    pdf.line(0, HEADER_H, PAGE_W, HEADER_H);
-
-    // Draw page image content
-    const imgData = canvas.toDataURL("image/jpeg", 0.95);
-    const imgHeight = (canvas.height / canvas.width) * CONTENT_W;
-
-    pdf.addImage(
-      imgData,
-      "JPEG",
-      MARGIN,
-      HEADER_H + 1,
-      CONTENT_W,
-      imgHeight,
-    );
-
-    // Footer bar
-    pdf.setFillColor(15, 23, 42);
-    pdf.rect(0, PAGE_H - FOOTER_H, PAGE_W, FOOTER_H, "F");
-
-    pdf.setDrawColor(30, 41, 59);   // slate-800 separator
-    pdf.setLineWidth(0.2);
-    pdf.line(0, PAGE_H - FOOTER_H, PAGE_W, PAGE_H - FOOTER_H);
-
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(6.5);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text(`Généré le ${dateStr} — getecopulse.fr`, MARGIN, PAGE_H - 2.5);
-    pdf.text(`${i + 1} / ${pages.length}`, PAGE_W - MARGIN, PAGE_H - 2.5, { align: "right" });
-  }
-
-  pdf.save(`GetEcoPulse_Audit_${isoDate}_${fileSlug}.pdf`);
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  // Small delay before revoking so the download dialog has time to open
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
