@@ -39,7 +39,7 @@ export async function exportAuditPdf(
   isRealData: boolean,
 ): Promise<void> {
   // ── 1. Pre-fetch satellite image ─────────────────────────────────────────
-  const satelliteDataUri = (audit as any).satellite_image_data_uri || (audit.satellite_image_url
+  const satelliteDataUri = audit.satellite_image_data_uri || (audit.satellite_image_url
     ? await fetchAsDataUri(audit.satellite_image_url)
     : null);
 

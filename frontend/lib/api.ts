@@ -99,6 +99,8 @@ export interface AuditResult {
   };
   country_code?: string;
   satellite_image_url: string | null;
+  /** Base64 data URI of the satellite image — sent by the backend to avoid CORS on PDF export. */
+  satellite_image_data_uri?: string | null;
 }
 
 // ---------------------------------------------------------------------------
