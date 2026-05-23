@@ -381,7 +381,10 @@ class BuildingAnalyzer:
             lons = [n[1] for n in b["nodes_latlon"]]
             return sum(lats) / len(lats), sum(lons) / len(lons)
 
-        nearest = min(buildings, key=lambda b: _point_distance(ref_lat, ref_lon, *_bld_centroid(b)))
+        # Target significant buildings (>= 150 m²) to prevent centering/zooming on tiny sheds or gatehouses.
+        significant_buildings = [b for b in buildings if b["area_m2"] >= 150.0]
+        target_pool = significant_buildings if significant_buildings else buildings
+        nearest = min(target_pool, key=lambda b: _point_distance(ref_lat, ref_lon, *_bld_centroid(b)))
         n_lats  = [n[0] for n in nearest["nodes_latlon"]]
         n_lons  = [n[1] for n in nearest["nodes_latlon"]]
         c_lat, c_lon = _bld_centroid(nearest)
