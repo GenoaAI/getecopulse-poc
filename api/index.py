@@ -141,6 +141,14 @@ async def audit_building(payload: AuditRequest):
             satellite_url: str | None = None
             if uploader is not None:
                 satellite_url = await asyncio.to_thread(uploader, image_bytes, payload.address)
+            else:
+                # Fallback to direct Mapbox URL when Supabase is not configured
+                satellite_url = (
+                    f"https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static"
+                    f"/{footprint['centroid_lon']},{footprint['centroid_lat']},{footprint['zoom']}"
+                    f"/640x640@2x"
+                    f"?access_token={settings.mapbox_api_key}"
+                )
 
             # ── Step 4 — Climate + Vision IA (heaviest step) ─────────────
             yield _sse({"step": 4, "total": 6, "status": "Analyse climatique et Vision IA…"})
@@ -158,10 +166,11 @@ async def audit_building(payload: AuditRequest):
                 footprint.get("area_m2"),
             )
 
-            # ── Step 6 — Compute & return full passport ───────────────────
-            yield _sse({"step": 6, "total": 6, "status": "Calcul du bilan énergétique…"})
+            import base64
+            satellite_data_uri = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+
             passport = analyzer._assemble_passport(
-                geo, footprint, climate, roof, satellite_url, payload.naf_code, plausibility
+                geo, footprint, climate, roof, satellite_url, payload.naf_code, plausibility, satellite_data_uri
             )
 
             # Persist to Supabase (fire-and-forget, non-blocking)

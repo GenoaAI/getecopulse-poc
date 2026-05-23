@@ -757,6 +757,7 @@ class BuildingAnalyzer:
         satellite_url: str | None,
         naf_sector: str,
         plausibility: dict | None = None,
+        satellite_data_uri: str | None = None,
     ) -> dict:
         """
         Pure computation — no I/O.
@@ -860,6 +861,7 @@ class BuildingAnalyzer:
             "financial_projection": financials,
             "diagnostic":           diagnostic,
             "satellite_image_url":  satellite_url,
+            "satellite_image_data_uri": satellite_data_uri,
         }
 
     # ------------------------------------------------------------------
@@ -894,10 +896,11 @@ class BuildingAnalyzer:
         climate = self.fetch_climate_data(lat, lon)
         roof    = self.analyze_roof_with_vision(image_bytes)
 
-        plausibility = self._check_plausibility(address, naf_sector, footprint["area_m2"])
+        import base64
+        satellite_data_uri = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
 
         return self._assemble_passport(
-            geo, footprint, climate, roof, satellite_url, naf_sector, plausibility
+            geo, footprint, climate, roof, satellite_url, naf_sector, plausibility, satellite_data_uri
         )
 
 
