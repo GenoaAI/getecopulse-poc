@@ -252,29 +252,43 @@ class BuildingAnalyzer:
         """Query Nominatim for the address and return its polygon if available."""
         NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
         headers = {"User-Agent": "GetEcoPulse/1.0 (energy audit PoC; contact@getecopulse.fr)"}
-        params  = {"q": address, "format": "geojson", "polygon_geojson": 1, "limit": 5}
-        try:
-            resp = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=15)
-            resp.raise_for_status()
-            features = resp.json().get("features", [])
-        except Exception as exc:
-            print(f"    [WARN] Nominatim request failed: {exc}")
-            return None
+        
+        # Build query fallback sequence (e.g. full address -> "Name, City" -> "Name, Postcode")
+        queries = [address]
+        parts = [p.strip() for p in address.split(",") if p.strip()]
+        if len(parts) >= 2:
+            # First element (usually business name) + last element (city/country)
+            queries.append(f"{parts[0]}, {parts[-1]}")
+            if len(parts) >= 3:
+                # First element + postcode/city
+                queries.append(f"{parts[0]}, {parts[-2]}")
+                
+        for q in queries:
+            params = {"q": q, "format": "geojson", "polygon_geojson": 1, "limit": 5}
+            try:
+                resp = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=10)
+                resp.raise_for_status()
+                features = resp.json().get("features", [])
+            except Exception as exc:
+                print(f"    [WARN] Nominatim request failed for query '{q}': {exc}")
+                continue
 
-        for feat in features:
-            geom = feat.get("geometry", {})
-            if geom.get("type") == "Polygon":
-                coords = geom["coordinates"][0]          # outer ring [[lon,lat], ...]
-                nodes_latlon = [(c[1], c[0]) for c in coords]
-                result = self._build_footprint_result(nodes_latlon, coords, ov, source="nominatim")
-                return self._maybe_refine_with_buildings(result, nodes_latlon, ov, geo_lat=lat, geo_lon=lon)
-            if geom.get("type") == "MultiPolygon":
-                # pick the largest ring
-                all_rings = [ring for poly in geom["coordinates"] for ring in poly]
-                best_ring = max(all_rings, key=lambda r: _polygon_area_m2([(c[1], c[0]) for c in r]))
-                nodes_latlon = [(c[1], c[0]) for c in best_ring]
-                result = self._build_footprint_result(nodes_latlon, best_ring, ov, source="nominatim")
-                return self._maybe_refine_with_buildings(result, nodes_latlon, ov, geo_lat=lat, geo_lon=lon)
+            for feat in features:
+                geom = feat.get("geometry", {})
+                if geom.get("type") == "Polygon":
+                    print(f"    [Nominatim] Found polygon matching query: '{q}'")
+                    coords = geom["coordinates"][0]          # outer ring [[lon,lat], ...]
+                    nodes_latlon = [(c[1], c[0]) for c in coords]
+                    result = self._build_footprint_result(nodes_latlon, coords, ov, source="nominatim")
+                    return self._maybe_refine_with_buildings(result, nodes_latlon, ov, geo_lat=lat, geo_lon=lon)
+                if geom.get("type") == "MultiPolygon":
+                    print(f"    [Nominatim] Found multi-polygon matching query: '{q}'")
+                    # pick the largest ring
+                    all_rings = [ring for poly in geom["coordinates"] for ring in poly]
+                    best_ring = max(all_rings, key=lambda r: _polygon_area_m2([(c[1], c[0]) for c in r]))
+                    nodes_latlon = [(c[1], c[0]) for c in best_ring]
+                    result = self._build_footprint_result(nodes_latlon, best_ring, ov, source="nominatim")
+                    return self._maybe_refine_with_buildings(result, nodes_latlon, ov, geo_lat=lat, geo_lon=lon)
 
         print("    [INFO] Nominatim returned no polygon — trying Overpass")
         return None
