@@ -327,7 +327,9 @@ export default function Home() {
   const diag = (realDiag ?? audit?.diagnostic) as AuditResult["diagnostic"] | undefined;
 
   const center: [number, number] = audit
-    ? [audit.coordinates.lat, audit.coordinates.lon]
+    ? (phys?.footprint?.centroid
+        ? [phys.footprint.centroid.lat, phys.footprint.centroid.lon]
+        : [audit.coordinates.lat, audit.coordinates.lon])
     : FRANCE_CENTER;
 
   const showResults = audit !== null || loading;
