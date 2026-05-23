@@ -1,3 +1,4 @@
+import base64
 import os
 import math
 import requests
@@ -915,7 +916,6 @@ class BuildingAnalyzer:
 
         plausibility = self._check_plausibility(address, naf_sector, footprint["area_m2"])
 
-        import base64
         satellite_data_uri = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
 
         return self._assemble_passport(

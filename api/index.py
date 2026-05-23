@@ -9,6 +9,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import asyncio
+import base64
 import json
 from contextlib import asynccontextmanager
 
@@ -166,7 +167,6 @@ async def audit_building(payload: AuditRequest):
                 footprint.get("area_m2"),
             )
 
-            import base64
             satellite_data_uri = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
 
             passport = analyzer._assemble_passport(

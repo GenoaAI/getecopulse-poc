@@ -76,6 +76,10 @@ class SupabaseManager:
         coords    = passport.get("coordinates", {})
         footprint = passport.get("physical_data", {}).get("footprint", {})
 
+        # Strip the large base64 data URI before storing in Postgres — the image
+        # is already persisted via Supabase Storage (satellite_image_url).
+        passport_to_store = {k: v for k, v in passport.items() if k != "satellite_image_data_uri"}
+
         row = {
             "address":             passport.get("address"),
             "naf_code":            fin.get("naf_sector"),
@@ -86,7 +90,7 @@ class SupabaseManager:
             "roi_years":           fin.get("roi_years"),
             "solar_coverage_pct":  fin.get("solar_coverage_pct"),
             "satellite_image_url": passport.get("satellite_image_url"),
-            "passport_json":       passport,
+            "passport_json":       passport_to_store,
         }
 
         try:
