@@ -662,26 +662,35 @@ class BuildingAnalyzer:
             "daily": "shortwave_radiation_sum,temperature_2m_max,temperature_2m_min",
             "timezone": "auto",
         }
-        response = requests.get(self.OPEN_METEO_URL, params=params, timeout=20)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.get(self.OPEN_METEO_URL, params=params, timeout=8)
+            response.raise_for_status()
+            data = response.json()
 
-        daily = data.get("daily", {})
-        radiation = daily.get("shortwave_radiation_sum", [])
-        t_max = daily.get("temperature_2m_max", [])
-        t_min = daily.get("temperature_2m_min", [])
+            daily = data.get("daily", {})
+            radiation = daily.get("shortwave_radiation_sum", [])
+            t_max = daily.get("temperature_2m_max", [])
+            t_min = daily.get("temperature_2m_min", [])
 
-        # MJ/m2/day -> kWh/m2/year (÷ 3.6)
-        dni_annual_kwh = sum(v for v in radiation if v is not None) / 3.6
-        t_mean = (
-            sum((a + b) / 2 for a, b in zip(t_max, t_min) if a and b) / len(t_max)
-            if t_max else 0
-        )
-        result = {
-            "year": end_year,
-            "dni_annual_kwh_m2": round(dni_annual_kwh, 1),
-            "temperature_mean_c": round(t_mean, 1),
-        }
+            # MJ/m2/day -> kWh/m2/year (÷ 3.6)
+            dni_annual_kwh = sum(v for v in radiation if v is not None) / 3.6
+            t_mean = (
+                sum((a + b) / 2 for a, b in zip(t_max, t_min) if a and b) / len(t_max)
+                if t_max else 0
+            )
+            result = {
+                "year": end_year,
+                "dni_annual_kwh_m2": round(dni_annual_kwh, 1),
+                "temperature_mean_c": round(t_mean, 1),
+            }
+        except Exception as exc:
+            print(f"    [WARN] Climate API failed: {exc} — using default national averages.")
+            # Default fallback values for France
+            result = {
+                "year": end_year,
+                "dni_annual_kwh_m2": 1150.0,
+                "temperature_mean_c": 12.5,
+            }
         print(f"    -> DNI: {result['dni_annual_kwh_m2']} kWh/m2/yr  |  T mean: {result['temperature_mean_c']} C")
         return result
 
