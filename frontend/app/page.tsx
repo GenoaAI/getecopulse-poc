@@ -460,7 +460,7 @@ export default function Home() {
             </button>
 
             {/* PDF export — visible only when report is unlocked */}
-            {audit && (isPurchased || !!realDiag) && (
+            {audit && isPurchased && (
               <button
                 onClick={handleExportPdf}
                 disabled={pdfLoading}
@@ -944,7 +944,7 @@ export default function Home() {
 
                 {/* Cards grid — blurred when locked */}
                 <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-300
-                                 ${!isPurchased && !realDiag ? "blur-sm pointer-events-none select-none" : ""}`}>
+                                 ${!isPurchased ? "blur-sm pointer-events-none select-none" : ""}`}>
 
                   {/* Card 1 — Effacement OPEX */}
                   <SolutionCard
@@ -1026,7 +1026,7 @@ export default function Home() {
                 </div>
 
                 {/* ── Lock overlay — shown when not purchased ────────── */}
-                {!isPurchased && !realDiag && (
+                {!isPurchased && (
                   <div className="absolute inset-0 flex items-center justify-center
                                   rounded-2xl bg-[#0f172a]/75 backdrop-blur-[2px]">
                     <div className="flex flex-col items-center gap-5 text-center px-6 max-w-sm">
@@ -1055,7 +1055,7 @@ export default function Home() {
                         ) : (
                           <Lock className="w-4 h-4" />
                         )}
-                        {checkingPurchase ? "Redirection…" : "Déverrouiller — 29 €"}
+                        {checkingPurchase ? "Redirection…" : `Déverrouiller — ${process.env.NEXT_PUBLIC_AUDIT_PRICE ?? "29"} €`}
                       </button>
                       <p className="text-[10px] text-slate-600">
                         Paiement unique · Accès permanent dans ce navigateur

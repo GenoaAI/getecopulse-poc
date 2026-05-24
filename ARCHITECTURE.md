@@ -75,10 +75,25 @@ Routes statiques Next.js obligatoires avant toute mise en vente : `/mentions-leg
 
 ### Philosophie Freemium — La Preuve par le Talon
 
-Le hook produit repose sur la délivrance de valeur immédiate et gratuite :
-- **Gratuit :** Modélisation satellite, diagnostic de consommation synthétique, et analyse de la courbe de charge Enedis réelle (upload CSV). L'objectif est de montrer le talon de nuit réel du client avant de demander un paiement.
-- **Payant (paiement unique) :** Déverrouillage de la Section 03 (Plan d'action chiffré, scénarios ROI) et export du rapport PDF vectoriel.
-- **Accès gratuit aux données réelles :** Un utilisateur ayant importé ses données Linky réelles obtient l'accès complet sans paiement — levier d'adoption B2B et d'engagement.
+Le tunnel utilisateur est **strictement séquentiel**. Le paywall ne peut jamais apparaître avant que les trois étapes gratuites aient été restituées.
+
+#### Tunnel — séquençage non négociable
+
+| Étape | Contenu | Accès |
+|---|---|---|
+| **1** | Modélisation satellite (empreinte OSM, image, analyse toiture) | 🆓 GRATUIT |
+| **2** | Diagnostic de consommation synthétique (§01 + §02 estimés) | 🆓 GRATUIT |
+| **3** | Analyse de la courbe de charge Enedis réelle (upload CSV → §02 réel, talon de nuit mesuré) | 🆓 GRATUIT |
+| ⬇ | **— PAYWALL — paiement unique Stripe —** | |
+| **4** | Plan d'action chiffré — Section 03 (scénarios ROI, effacement OPEX) | 💳 PAYANT |
+| **5** | Export du rapport PDF vectoriel complet | 💳 PAYANT |
+
+#### Règles absolues de séquençage
+
+- **L'upload Enedis (étape 3) est gratuit et inconditionnellement accessible.** Il enrichit §02 avec les données réelles mais n'ouvre aucun accès payant.
+- **Le paywall se positionne exclusivement entre l'étape 3 et l'étape 4.** Un utilisateur qui vient d'importer ses données voit ses résultats réels (§02) avant que le verrou §03 ne lui soit présenté.
+- **§03 et le PDF sont les seuls éléments verrouillés.** Tout le reste — audit satellite, diagnostic synthétique, analyse Enedis — est toujours libre d'accès.
+- **L'upload CSV n'est jamais une clé d'accès à §03.** Seul le paiement Stripe confirme l'achat.
 
 ### Zéro Hardcodage du Prix — Règle Absolue
 Le montant affiché ne doit **jamais** être hardcodé dans le code source.

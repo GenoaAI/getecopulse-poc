@@ -19,5 +19,5 @@ google-genai==2.5.0
 # Supabase — storage + persistence (optional — no-op if env vars absent)
 supabase==2.30.0
 
-# Stripe — payment processing (optional — no-op if env vars absent)
+# Stripe — payment integration
 stripe==12.1.0

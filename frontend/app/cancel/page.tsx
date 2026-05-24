@@ -1,47 +1,37 @@
 "use client";
 
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, XCircle, ArrowLeft } from "lucide-react";
+import { XCircle } from "lucide-react";
 
 export default function CancelPage() {
   const router = useRouter();
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push("/");
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white flex flex-col">
-      {/* Minimal header */}
-      <header className="px-6 py-4 border-b border-slate-800">
-        <div className="max-w-6xl mx-auto flex items-center gap-2">
-          <Zap className="w-5 h-5 text-[#bef264]" />
-          <span className="text-base font-bold">GetEcoPulse</span>
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="flex flex-col items-center gap-6 text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-slate-800 border border-slate-700
-                          flex items-center justify-center">
-            <XCircle className="w-8 h-8 text-slate-400" />
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Paiement annulé</h1>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Votre paiement n&apos;a pas été finalisé. Aucun montant n&apos;a été
-              débité. Vous pouvez relancer le processus depuis votre rapport.
-            </p>
-          </div>
-
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl
-                       bg-slate-700 text-slate-200 text-sm font-medium
-                       hover:bg-slate-600 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retour au rapport
-          </button>
-        </div>
-      </main>
+    <div className="min-h-screen bg-[#0f172a] text-white flex items-center justify-center p-6">
+      <div className="flex flex-col items-center gap-4 max-w-md text-center">
+        <XCircle className="w-16 h-16 text-yellow-500" />
+        <h1 className="text-xl font-bold text-white">Paiement annulé</h1>
+        <p className="text-sm text-slate-300">
+          La transaction a été annulée. Aucun montant ne vous a été débité.
+        </p>
+        <button
+          onClick={() => router.push("/")}
+          className="mt-4 px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+        >
+          Retour à l'accueil
+        </button>
+        <p className="text-[10px] text-slate-500 mt-2">
+          Redirection automatique vers l'accueil...
+        </p>
+      </div>
     </div>
   );
 }

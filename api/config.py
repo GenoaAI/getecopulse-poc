@@ -63,6 +63,8 @@ class _EnvSettings(BaseSettings):
     stripe_webhook_secret: str | None = None
     # Price in euro cents (default 29 €)
     stripe_price_cents: int = 2900
+    # Comma-separated list of allowed CORS origins (e.g. "https://getecopulse.vercel.app")
+    allowed_origins: str = "http://localhost:3000,http://localhost:3001"
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +82,7 @@ class Settings:
         self.stripe_secret_key: str | None = env.stripe_secret_key
         self.stripe_webhook_secret: str | None = env.stripe_webhook_secret
         self.stripe_price_cents: int = env.stripe_price_cents
+        self.allowed_origins: list[str] = [o.strip() for o in env.allowed_origins.split(",") if o.strip()]
 
         raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         self.solar_physics = SolarPhysicsConfig(**raw["solar_physics"])

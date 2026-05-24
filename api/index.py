@@ -61,10 +61,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow the Next.js dev server — restrict to Vercel URL in production
+# Origins driven by ALLOWED_ORIGINS env var (comma-separated list).
+# Default = localhost dev servers; set to your Vercel URL in production.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=settings.allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
