@@ -24,7 +24,10 @@ import {
   Award,
   FileDown,
 } from "lucide-react";
-import { runAudit, fetchFootprint, type AuditResult } from "@/lib/api";
+import {
+  runAudit, fetchFootprint, type AuditResult,
+  computeAddressHash, createCheckoutSession, checkPurchase,
+} from "@/lib/api";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { exportAuditPdf } from "@/lib/pdf-export";
 import AuthModal from "@/components/AuthModal";
@@ -53,6 +56,10 @@ const NAF_OPTIONS = [
 ];
 
 const FRANCE_CENTER: [number, number] = [46.603354, 1.888334];
+
+/** localStorage keys for purchase persistence */
+const LS_PURCHASED = "gep_purchased";
+const LS_RESTORE   = "gep_restore";
 
 // ---------------------------------------------------------------------------
 // Section heading
@@ -253,6 +260,11 @@ export default function Home() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  // Purchase / unlock state
+  const [isPurchased,      setIsPurchased]      = useState(false);
+  const [addressHash,      setAddressHash]      = useState<string | null>(null);
+  const [checkingPurchase, setCheckingPurchase] = useState(false);
+
   // Ref for auto-scroll to consumption section when real data loads
   const section02Ref = useRef<HTMLElement>(null);
 
@@ -264,6 +276,40 @@ export default function Home() {
       }, 150); // small delay so the DOM has updated
     }
   }, [realDiag]);
+
+  // ── On mount: restore audit state if returning from Stripe success ─────
+  useEffect(() => {
+    const raw = localStorage.getItem(LS_RESTORE);
+    if (!raw) return;
+    localStorage.removeItem(LS_RESTORE);
+    try {
+      const saved = JSON.parse(raw) as {
+        audit:   AuditResult;
+        diag:    AuditResult["diagnostic"] | null;
+        nafCode: string;
+        hash:    string;
+      };
+      setAudit(saved.audit);
+      setNafCode(saved.nafCode);
+      if (saved.audit.address) setAddress(saved.audit.address);
+      // If diag differs from audit.diagnostic, it was real Linky data
+      if (saved.diag && saved.diag !== saved.audit.diagnostic) {
+        setRealDiag(saved.diag as AuditResult["diagnostic"]);
+      }
+      setAddressHash(saved.hash);
+      setIsPurchased(true);
+    } catch { /* ignore malformed data */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── When audit loads: compute hash + check localStorage for prior purchase
+  useEffect(() => {
+    if (!audit) return;
+    computeAddressHash(audit.address).then((hash) => {
+      setAddressHash(hash);
+      const stored = JSON.parse(localStorage.getItem(LS_PURCHASED) ?? "[]") as string[];
+      if (stored.includes(hash)) setIsPurchased(true);
+    });
+  }, [audit?.address]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check Supabase session on mount and listen for auth changes
   // Guard: Supabase is optional — skip entirely when env vars are absent
@@ -289,6 +335,30 @@ export default function Home() {
       await exportAuditPdf(audit, diag, nafCode, !!realDiag);
     } finally {
       setPdfLoading(false);
+    }
+  }
+
+  async function handlePurchase() {
+    if (!audit || !addressHash) return;
+    setCheckingPurchase(true);
+    try {
+      // Persist current audit state so it can be restored after Stripe redirect
+      const savePayload = {
+        audit:   { ...audit, satellite_image_data_uri: undefined },
+        diag:    diag ?? null,
+        nafCode,
+        hash:    addressHash,
+        address: audit.address,
+      };
+      localStorage.setItem(`gep_pending_${addressHash}`, JSON.stringify(savePayload));
+
+      const { url } = await createCheckoutSession(
+        audit.address, nafCode, addressHash, window.location.origin,
+      );
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de la création du paiement.");
+      setCheckingPurchase(false);
     }
   }
 
@@ -389,8 +459,8 @@ export default function Home() {
               Analyser
             </button>
 
-            {/* PDF export — visible only when audit is ready */}
-            {audit && (
+            {/* PDF export — visible only when report is unlocked */}
+            {audit && (isPurchased || !!realDiag) && (
               <button
                 onClick={handleExportPdf}
                 disabled={pdfLoading}
@@ -869,85 +939,130 @@ export default function Home() {
                 <SkeletonBlock h="h-64" />
               </div>
             ) : fin && diag && phys ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              /* ── Wrapper: relative so the lock overlay can be absolute ── */
+              <div className="relative">
 
-                {/* Card 1 — Effacement OPEX */}
-                <SolutionCard
-                  variant="primary"
-                  badge="PRIORITAIRE"
-                  icon={Moon}
-                  title="Effacement Talon de Nuit"
-                  description="Actions OPEX — sans investissement lourd"
-                  metrics={[
-                    {
-                      label: "Économie potentielle",
-                      value: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an`,
-                    },
-                    {
-                      label: "Gaspillage ciblé",
-                      value: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an`,
-                    },
-                    {
-                      label: "Talon nocturne",
-                      value: `${Math.round(diag.night_talon_pct * 100)} %`,
-                    },
-                    {
-                      label: "Investissement",
-                      value: `${diag.opex_capex_eur.toLocaleString("fr-FR")} €`,
-                    },
-                  ]}
-                  roi={diag.opex_roi}
-                />
+                {/* Cards grid — blurred when locked */}
+                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-300
+                                 ${!isPurchased && !realDiag ? "blur-sm pointer-events-none select-none" : ""}`}>
 
-                {/* Card 2 — Solaire CAPEX */}
-                <SolutionCard
-                  variant="secondary"
-                  icon={Sun}
-                  title="Installation Solaire"
-                  description="Autoconsommation — réduction de la facture"
-                  metrics={[
-                    {
-                      label: "CAPEX estimé",
-                      value: `${(fin.capex_eur / 1000).toFixed(0)} k€`,
-                    },
-                    {
-                      label: "Économie annuelle",
-                      value: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an`,
-                    },
-                    {
-                      label: "Puissance crête",
-                      value: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`,
-                    },
-                    {
-                      label: "Couverture",
-                      value: `${fin.solar_coverage_pct} %`,
-                    },
-                  ]}
-                  roi={
-                    fin.roi_years !== null
-                      ? `${fin.roi_years} ans`
-                      : "Non calculable"
-                  }
-                />
+                  {/* Card 1 — Effacement OPEX */}
+                  <SolutionCard
+                    variant="primary"
+                    badge="PRIORITAIRE"
+                    icon={Moon}
+                    title="Effacement Talon de Nuit"
+                    description="Actions OPEX — sans investissement lourd"
+                    metrics={[
+                      {
+                        label: "Économie potentielle",
+                        value: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an`,
+                      },
+                      {
+                        label: "Gaspillage ciblé",
+                        value: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an`,
+                      },
+                      {
+                        label: "Talon nocturne",
+                        value: `${Math.round(diag.night_talon_pct * 100)} %`,
+                      },
+                      {
+                        label: "Investissement",
+                        value: `${diag.opex_capex_eur.toLocaleString("fr-FR")} €`,
+                      },
+                    ]}
+                    roi={diag.opex_roi}
+                  />
 
-                {/* Card 3 — Thermique (coming soon) */}
-                <SolutionCard
-                  variant="disabled"
-                  icon={Flame}
-                  title="Isolation Thermique"
-                  description="Réduction des pertes par la toiture"
-                  metrics={[
-                    {
-                      label: "Risque thermique",
-                      value: phys.thermal_assessment.risk_level,
-                    },
-                    {
-                      label: "Score de perte",
-                      value: `${Math.round(phys.thermal_assessment.score * 100)} %`,
-                    },
-                  ]}
-                  roi="À venir"
-                />
+                  {/* Card 2 — Solaire CAPEX */}
+                  <SolutionCard
+                    variant="secondary"
+                    icon={Sun}
+                    title="Installation Solaire"
+                    description="Autoconsommation — réduction de la facture"
+                    metrics={[
+                      {
+                        label: "CAPEX estimé",
+                        value: `${(fin.capex_eur / 1000).toFixed(0)} k€`,
+                      },
+                      {
+                        label: "Économie annuelle",
+                        value: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an`,
+                      },
+                      {
+                        label: "Puissance crête",
+                        value: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`,
+                      },
+                      {
+                        label: "Couverture",
+                        value: `${fin.solar_coverage_pct} %`,
+                      },
+                    ]}
+                    roi={
+                      fin.roi_years !== null
+                        ? `${fin.roi_years} ans`
+                        : "Non calculable"
+                    }
+                  />
+
+                  {/* Card 3 — Thermique (coming soon) */}
+                  <SolutionCard
+                    variant="disabled"
+                    icon={Flame}
+                    title="Isolation Thermique"
+                    description="Réduction des pertes par la toiture"
+                    metrics={[
+                      {
+                        label: "Risque thermique",
+                        value: phys.thermal_assessment.risk_level,
+                      },
+                      {
+                        label: "Score de perte",
+                        value: `${Math.round(phys.thermal_assessment.score * 100)} %`,
+                      },
+                    ]}
+                    roi="À venir"
+                  />
+                </div>
+
+                {/* ── Lock overlay — shown when not purchased ────────── */}
+                {!isPurchased && !realDiag && (
+                  <div className="absolute inset-0 flex items-center justify-center
+                                  rounded-2xl bg-[#0f172a]/75 backdrop-blur-[2px]">
+                    <div className="flex flex-col items-center gap-5 text-center px-6 max-w-sm">
+                      <div className="w-12 h-12 rounded-full bg-[#1e293b] border border-slate-700
+                                      flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-[#bef264]" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold text-sm mb-1">
+                          Plan d&apos;action complet
+                        </p>
+                        <p className="text-slate-400 text-xs leading-relaxed">
+                          Chiffres détaillés, scénarios ROI et recommandations
+                          personnalisées pour ce bâtiment.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handlePurchase}
+                        disabled={checkingPurchase || !addressHash}
+                        className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold
+                                   bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {checkingPurchase ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Lock className="w-4 h-4" />
+                        )}
+                        {checkingPurchase ? "Redirection…" : "Déverrouiller — 29 €"}
+                      </button>
+                      <p className="text-[10px] text-slate-600">
+                        Paiement unique · Accès permanent dans ce navigateur
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : null}
           </section>

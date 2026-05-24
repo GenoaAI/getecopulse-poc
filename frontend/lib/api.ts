@@ -183,3 +183,63 @@ export async function fetchFootprint(
   if (!res.ok) throw new Error(`Footprint HTTP ${res.status}`);
   return res.json() as Promise<FeatureCollection>;
 }
+
+// ---------------------------------------------------------------------------
+// Stripe helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * SHA-256 of the normalized address (lowercase + trim).
+ * Must match the server-side computation in index.py.
+ */
+export async function computeAddressHash(address: string): Promise<string> {
+  const normalized = address.toLowerCase().trim();
+  const data       = new TextEncoder().encode(normalized);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Create a Stripe Checkout session and return the redirect URL. */
+export async function createCheckoutSession(
+  address:     string,
+  nafCode:     string,
+  addressHash: string,
+  origin:      string,
+): Promise<{ url: string; session_id: string }> {
+  const res = await fetch(`${API_BASE}/api/create-checkout-session`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({
+      address,
+      naf_code:     nafCode,
+      address_hash: addressHash,
+      origin,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { detail?: string }).detail ?? `Erreur HTTP ${res.status}`
+    );
+  }
+  return res.json();
+}
+
+/**
+ * Check whether the given address has already been purchased.
+ * Pass sessionId right after a Stripe redirect for direct verification
+ * (bypasses the webhook/DB race condition).
+ */
+export async function checkPurchase(
+  addressHash: string,
+  sessionId?:  string,
+): Promise<boolean> {
+  const params = new URLSearchParams({ address_hash: addressHash });
+  if (sessionId) params.set("session_id", sessionId);
+  const res = await fetch(`${API_BASE}/api/check-purchase?${params}`);
+  if (!res.ok) return false;
+  const data = (await res.json()) as { purchased: boolean };
+  return data.purchased;
+}

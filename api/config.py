@@ -59,6 +59,10 @@ class _EnvSettings(BaseSettings):
     mapbox_api_key: str
     supabase_url: str | None = None
     supabase_key: str | None = None
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    # Price in euro cents (default 29 €)
+    stripe_price_cents: int = 2900
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +77,9 @@ class Settings:
         self.mapbox_api_key: str = env.mapbox_api_key
         self.supabase_url: str | None = env.supabase_url
         self.supabase_key: str | None = env.supabase_key
+        self.stripe_secret_key: str | None = env.stripe_secret_key
+        self.stripe_webhook_secret: str | None = env.stripe_webhook_secret
+        self.stripe_price_cents: int = env.stripe_price_cents
 
         raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         self.solar_physics = SolarPhysicsConfig(**raw["solar_physics"])

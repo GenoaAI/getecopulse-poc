@@ -13,9 +13,19 @@ import base64
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+import hashlib
+
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+# Stripe — optional, no-op when not installed or secret key absent
+try:
+    import stripe as _stripe
+    _STRIPE_AVAILABLE = True
+except ImportError:
+    _stripe = None          # type: ignore[assignment]
+    _STRIPE_AVAILABLE = False
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -262,7 +272,7 @@ async def real_diagnostic(
         "has_quantified_baseline": True,
     }
 
-    return {
+    return {                                                          # noqa: E501 (kept for readability)
         "diagnostic": {
             "theoretical_annual_consumption_kwh": annual_kwh,
             "night_talon_pct":           round(real_night_pct, 3),
@@ -278,3 +288,142 @@ async def real_diagnostic(
             "iso_50001_assessment":      iso_50001_assessment,
         }
     }
+
+
+# ---------------------------------------------------------------------------
+# Stripe — payment routes
+# ---------------------------------------------------------------------------
+
+class CheckoutRequest(BaseModel):
+    address:      str = Field(..., min_length=5)
+    naf_code:     str = Field("NAF_BUREAUX")
+    address_hash: str = Field(..., min_length=64, max_length=64, description="SHA-256 hex of normalized address")
+    origin:       str = Field(..., description="window.location.origin for absolute callback URLs")
+
+
+def _stripe_configured() -> "_stripe":  # type: ignore[return]
+    """Return the configured stripe module or raise 503."""
+    if not _STRIPE_AVAILABLE or not settings.stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Paiement non configuré sur ce serveur.")
+    _stripe.api_key = settings.stripe_secret_key  # type: ignore[union-attr]
+    return _stripe  # type: ignore[return-value]
+
+
+@app.post("/api/create-checkout-session")
+async def create_checkout_session(payload: CheckoutRequest):
+    """
+    Create a Stripe Checkout session for a one-time report purchase.
+    Returns {"url": "https://checkout.stripe.com/...", "session_id": "cs_..."}
+    """
+    stripe = _stripe_configured()
+
+    # Server-side hash verification — prevents hash spoofing
+    expected = hashlib.sha256(payload.address.lower().strip().encode()).hexdigest()
+    if payload.address_hash != expected:
+        raise HTTPException(status_code=400, detail="address_hash invalide.")
+
+    price_cents = settings.stripe_price_cents
+    short_addr  = payload.address[:200]
+
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "eur",
+                "unit_amount": price_cents,
+                "product_data": {
+                    "name":        "Rapport Énergétique GetEcoPulse",
+                    "description": f"Audit complet — {short_addr}",
+                },
+            },
+            "quantity": 1,
+        }],
+        metadata={
+            "address_hash": payload.address_hash,
+            "address":      short_addr,
+            "naf_code":     payload.naf_code,
+        },
+        success_url=(
+            f"{payload.origin}/success"
+            f"?session_id={{CHECKOUT_SESSION_ID}}"
+            f"&address_hash={payload.address_hash}"
+        ),
+        cancel_url=f"{payload.origin}/cancel",
+    )
+    return {"url": session.url, "session_id": session.id}
+
+
+@app.post("/api/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    """
+    Stripe webhook endpoint — validates the signature and records the purchase.
+    Must be registered in the Stripe dashboard pointing to this URL.
+    """
+    if not settings.stripe_webhook_secret:
+        raise HTTPException(status_code=503, detail="Webhook secret non configuré.")
+    stripe = _stripe_configured()
+
+    body      = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            body, sig_header, settings.stripe_webhook_secret
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload invalide.")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Signature invalide.")
+
+    if event["type"] == "checkout.session.completed":
+        session      = event["data"]["object"]
+        address_hash = session["metadata"].get("address_hash", "")
+        supabase_manager.save_purchase(
+            address_hash      = address_hash,
+            session_id        = session["id"],
+            amount_paid_cents = session.get("amount_total") or settings.stripe_price_cents,
+            currency          = session.get("currency", "eur"),
+        )
+
+    return {"received": True}
+
+
+@app.get("/api/check-purchase")
+async def check_purchase(
+    address_hash: str          = Query("",   description="SHA-256 hex of normalized address"),
+    session_id:   str | None   = Query(None, description="Stripe session ID — enables direct Stripe verification"),
+):
+    """
+    Check whether a given address has been purchased.
+
+    When session_id is supplied (immediately after Stripe redirect) the endpoint
+    verifies the session directly with Stripe — bypassing the webhook/DB race condition.
+    It also persists the purchase to Supabase if not already recorded.
+    """
+    # ── Direct Stripe verification (avoids webhook race condition) ────────
+    if session_id and _STRIPE_AVAILABLE and settings.stripe_secret_key:
+        stripe = _stripe_configured()
+        try:
+            session = await asyncio.to_thread(
+                stripe.checkout.Session.retrieve, session_id
+            )
+            if session.payment_status == "paid":
+                session_hash = session.metadata.get("address_hash", address_hash)
+                # Persist idempotently — webhook may have arrived already
+                await asyncio.to_thread(
+                    supabase_manager.save_purchase,
+                    session_hash,
+                    session_id,
+                    session.amount_total or settings.stripe_price_cents,
+                    session.currency or "eur",
+                )
+                return {"purchased": True, "address_hash": session_hash}
+        except Exception as exc:
+            print(f"[WARN] Stripe session retrieve failed: {exc}")
+
+    # ── Fallback: DB lookup by address hash ───────────────────────────────
+    if address_hash:
+        purchased = await asyncio.to_thread(supabase_manager.check_purchase, address_hash)
+        return {"purchased": purchased}
+
+    return {"purchased": False}

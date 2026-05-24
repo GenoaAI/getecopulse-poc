@@ -61,6 +61,60 @@ class SupabaseManager:
             return None
 
     # ------------------------------------------------------------------
+    # Database — purchase records (Stripe)
+    # ------------------------------------------------------------------
+
+    def save_purchase(
+        self,
+        address_hash: str,
+        session_id: str,
+        amount_paid_cents: int,
+        currency: str,
+    ) -> dict:
+        """
+        Upsert a row in the `purchases` table.
+        Idempotent: repeated calls with the same session_id are no-ops.
+        Returns {} (silently) when Supabase is not configured or on error.
+        """
+        if not self.is_configured:
+            return {}
+        row = {
+            "address_hash":      address_hash,
+            "stripe_session_id": session_id,
+            "amount_paid_cents": amount_paid_cents,
+            "currency":          currency,
+        }
+        try:
+            result = (
+                self._client.table("purchases")
+                .upsert(row, on_conflict="stripe_session_id")
+                .execute()
+            )
+            saved = result.data[0] if result.data else {}
+            print(f"    [Supabase DB] Purchase saved — session: {session_id[:20]}…")
+            return saved
+        except Exception as exc:
+            print(f"    [WARN] Supabase purchase upsert failed: {exc}")
+            return {}
+
+    def check_purchase(self, address_hash: str) -> bool:
+        """Return True if at least one paid purchase exists for this address hash."""
+        if not self.is_configured:
+            return False
+        try:
+            result = (
+                self._client.table("purchases")
+                .select("id")
+                .eq("address_hash", address_hash)
+                .limit(1)
+                .execute()
+            )
+            return bool(result.data)
+        except Exception as exc:
+            print(f"    [WARN] Supabase purchase check failed: {exc}")
+            return False
+
+    # ------------------------------------------------------------------
     # Database — audit persistence
     # ------------------------------------------------------------------
 
