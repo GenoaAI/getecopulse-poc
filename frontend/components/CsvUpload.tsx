@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, CheckCircle, AlertCircle, X } from "lucide-react";
+import {
+  Upload, FileText, Loader2, CheckCircle, AlertCircle, X,
+  HelpCircle, FlaskConical,
+} from "lucide-react";
 import { API_BASE } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+// Lazy-load the tutorial to keep the main bundle small
+const EnedisTutorial = dynamic(() => import("./EnedisTutorial"), { ssr: false });
 
 interface RealDiagnostic {
   theoretical_annual_consumption_kwh: number;
@@ -32,19 +39,19 @@ interface RealDiagnostic {
 
 interface Props {
   nafCode: string;
-  /** Building footprint area from OSM — enables EUI-based grade */
   surfaceM2?: number;
-  /** ISO-2 country code from geocoding — enables country-specific Scope 2 factor */
   countryCode?: string;
   onResult: (diagnostic: RealDiagnostic) => void;
   onClose: () => void;
 }
 
 export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, onClose }: Props) {
-  const [file, setFile]         = useState<File | null>(null);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const inputRef                = useRef<HTMLInputElement>(null);
+  const [file, setFile]               = useState<File | null>(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const inputRef                      = useRef<HTMLInputElement>(null);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -52,16 +59,17 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
     if (f) setFile(f);
   }
 
-  async function handleUpload() {
-    if (!file) return;
+  async function handleUpload(overrideFile?: File) {
+    const target = overrideFile ?? file;
+    if (!target) return;
     setLoading(true);
     setError(null);
 
     const formData = new FormData();
-    formData.append("csv_file", file);
+    formData.append("csv_file", target);
     formData.append("naf_code", nafCode);
-    if (surfaceM2)    formData.append("surface_m2",   String(surfaceM2));
-    if (countryCode)  formData.append("country_code", countryCode);
+    if (surfaceM2)   formData.append("surface_m2",   String(surfaceM2));
+    if (countryCode) formData.append("country_code", countryCode);
 
     try {
       const res = await fetch(`${API_BASE}/api/diagnostic/real`, {
@@ -81,87 +89,157 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
     }
   }
 
+  /** Load the bundled demo CSV and immediately trigger the analysis */
+  async function handleLoadDemo() {
+    setDemoLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/template_enedis.csv");
+      if (!res.ok) throw new Error("Impossible de charger le fichier d'exemple.");
+      const blob = await res.blob();
+      const demoFile = new File([blob], "demo_courbe_de_charge.csv", { type: "text/csv" });
+      setFile(demoFile);
+      // Auto-trigger analysis right away
+      await handleUpload(demoFile);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur lors du chargement du fichier d'exemple.");
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  const isAnalysing = loading || demoLoading;
+
   return (
-    <div className="bg-[#1e293b] border border-[#bef264]/30 rounded-2xl p-6 relative">
+    <>
+      <div className="bg-[#1e293b] border border-[#bef264]/30 rounded-2xl p-6 relative">
 
-      {/* Close */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
-      >
-        <X className="w-4 h-4" />
-      </button>
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
 
-      <h3 className="text-white font-semibold mb-1">
-        Importer vos données Enedis
-      </h3>
-      <p className="text-xs text-slate-400 mb-4">
-        Exportez votre courbe de charge depuis{" "}
-        <span className="text-[#bef264]">Mon Espace Client Enedis</span>{" "}
-        → Gérer ma consommation → Télécharger mes données (format CSV, pas 30 min).
-      </p>
+        {/* Header */}
+        <div className="flex items-start justify-between pr-6 mb-1">
+          <h3 className="text-white font-semibold">
+            Importer vos données Enedis
+          </h3>
+          {/* Tutorial trigger */}
+          <button
+            onClick={() => setShowTutorial(true)}
+            title="Comment récupérer mon fichier CSV ?"
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-[#bef264]
+                       transition-colors ml-4 shrink-0"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            Guide d&apos;extraction
+          </button>
+        </div>
+        <p className="text-xs text-slate-400 mb-4">
+          Exportez votre courbe de charge depuis{" "}
+          <button
+            onClick={() => setShowTutorial(true)}
+            className="text-[#bef264] hover:underline cursor-pointer"
+          >
+            Mon Espace Client Enedis
+          </button>{" "}
+          → format CSV, pas 30 min.
+        </p>
 
-      {/* Drop zone */}
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3
-                    cursor-pointer transition-colors
-                    ${file
-                      ? "border-[#bef264]/50 bg-[#bef264]/5"
-                      : "border-slate-600 hover:border-slate-500 bg-slate-800/50"
-                    }`}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv,.txt"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
-        />
-        {file ? (
-          <>
-            <FileText className="w-8 h-8 text-[#bef264]" />
-            <p className="text-sm text-white font-medium">{file.name}</p>
-            <p className="text-xs text-slate-400">
-              {(file.size / 1024).toFixed(0)} Ko — cliquez pour changer
-            </p>
-          </>
-        ) : (
-          <>
-            <Upload className="w-8 h-8 text-slate-500" />
-            <p className="text-sm text-slate-300">
-              Glissez votre fichier CSV ici
-            </p>
-            <p className="text-xs text-slate-500">ou cliquez pour parcourir</p>
-          </>
+        {/* Drop zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onClick={() => inputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3
+                      cursor-pointer transition-colors
+                      ${file
+                        ? "border-[#bef264]/50 bg-[#bef264]/5"
+                        : "border-slate-600 hover:border-slate-500 bg-slate-800/50"
+                      }`}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv,.txt"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
+          />
+          {file ? (
+            <>
+              <FileText className="w-8 h-8 text-[#bef264]" />
+              <p className="text-sm text-white font-medium">{file.name}</p>
+              <p className="text-xs text-slate-400">
+                {(file.size / 1024).toFixed(0)} Ko — cliquez pour changer
+              </p>
+            </>
+          ) : (
+            <>
+              <Upload className="w-8 h-8 text-slate-500" />
+              <p className="text-sm text-slate-300">
+                Glissez votre fichier CSV ici
+              </p>
+              <p className="text-xs text-slate-500">ou cliquez pour parcourir</p>
+            </>
+          )}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-red-400 bg-red-900/20 rounded-lg p-3">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </div>
         )}
+
+        {/* Primary CTA */}
+        <button
+          onClick={() => handleUpload()}
+          disabled={!file || isAnalysing}
+          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5
+                     rounded-lg bg-[#bef264] text-slate-900 text-sm font-semibold
+                     hover:bg-[#a3e635] transition-colors
+                     disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Analyse en cours…</>
+          ) : (
+            <><CheckCircle className="w-4 h-4" /> Analyser mes vraies données</>
+          )}
+        </button>
+
+        {/* Demo CTA — anti-friction */}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-700" />
+          <span className="text-[10px] text-slate-600 uppercase tracking-widest">ou</span>
+          <div className="flex-1 h-px bg-slate-700" />
+        </div>
+        <button
+          onClick={handleLoadDemo}
+          disabled={isAnalysing}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5
+                     rounded-lg border border-slate-600 bg-slate-800/50 text-slate-300
+                     text-sm hover:border-slate-500 hover:text-white transition-colors
+                     disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {demoLoading ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Chargement de l&apos;exemple…</>
+          ) : (
+            <><FlaskConical className="w-4 h-4 text-blue-400" /> Tester avec un fichier d&apos;exemple</>
+          )}
+        </button>
+        <p className="mt-1.5 text-center text-[10px] text-slate-600">
+          Données industrielles simulées — 91 jours · pas 30 min
+        </p>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-red-400 bg-red-900/20 rounded-lg p-3">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
-        </div>
+      {/* Tutorial slide-over */}
+      {showTutorial && (
+        <EnedisTutorial onClose={() => setShowTutorial(false)} />
       )}
-
-      {/* Submit */}
-      <button
-        onClick={handleUpload}
-        disabled={!file || loading}
-        className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5
-                   rounded-lg bg-[#bef264] text-slate-900 text-sm font-semibold
-                   hover:bg-[#a3e635] transition-colors
-                   disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {loading ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Analyse en cours…</>
-        ) : (
-          <><CheckCircle className="w-4 h-4" /> Analyser mes vraies données</>
-        )}
-      </button>
-    </div>
+    </>
   );
 }
