@@ -23,6 +23,7 @@ import {
   Leaf,
   Award,
   FileDown,
+  LocateFixed,
 } from "lucide-react";
 import {
   runAudit, fetchFootprint, type AuditResult,
@@ -260,6 +261,9 @@ export default function Home() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  // Geolocation state
+  const [geoLoading, setGeoLoading] = useState(false);
+
   // Purchase / unlock state
   const [isPurchased,      setIsPurchased]      = useState(false);
   const [addressHash,      setAddressHash]      = useState<string | null>(null);
@@ -367,6 +371,32 @@ export default function Home() {
     }
   }
 
+  async function handleGeolocate() {
+    if (!navigator.geolocation) return;
+    setGeoLoading(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+      );
+      const { latitude, longitude } = pos.coords;
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+        { headers: { "Accept-Language": "fr" } }
+      );
+      const data = await res.json() as { address?: Record<string, string> };
+      const a = data.address ?? {};
+      const street = [a.house_number, a.road].filter(Boolean).join(" ");
+      const city   = a.city ?? a.town ?? a.village ?? a.municipality ?? "";
+      const parts  = [street, [a.postcode, city].filter(Boolean).join(" "), a.country]
+        .filter(Boolean);
+      if (parts.length) setAddress(parts.join(", "));
+    } catch {
+      // géolocalisation refusée ou timeout — l'utilisateur saisit manuellement
+    } finally {
+      setGeoLoading(false);
+    }
+  }
+
   async function handleAnalyse() {
     if (!address.trim()) return;
     setLoading(true);
@@ -432,10 +462,22 @@ export default function Home() {
                 onChange={(e) => setAddress(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAnalyse()}
                 placeholder="Adresse complète du bâtiment…"
-                className="w-full pl-9 pr-4 py-2 rounded-lg bg-slate-800 border border-slate-700
+                className="w-full pl-9 pr-9 py-2 rounded-lg bg-slate-800 border border-slate-700
                            text-sm text-white placeholder:text-slate-500
                            focus:outline-none focus:ring-1 focus:ring-[#bef264]/50 focus:border-[#bef264]/50"
               />
+              <button
+                onClick={handleGeolocate}
+                disabled={geoLoading}
+                title="Utiliser ma position"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500
+                           hover:text-[#bef264] transition-colors disabled:opacity-40"
+              >
+                {geoLoading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <LocateFixed className="w-4 h-4" />
+                }
+              </button>
             </div>
             <select
               value={nafCode}
