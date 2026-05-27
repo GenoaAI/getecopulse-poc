@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import {
   Upload, FileText, Loader2, CheckCircle, AlertCircle, X,
-  HelpCircle, FlaskConical,
+  HelpCircle, FlaskConical, ExternalLink,
 } from "lucide-react";
 import { API_BASE } from "@/lib/api";
 import dynamic from "next/dynamic";
@@ -123,31 +123,33 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
         </button>
 
         {/* Header */}
-        <div className="flex items-start justify-between pr-6 mb-1">
-          <h3 className="text-white font-semibold">
-            Importer vos données Enedis
-          </h3>
-          {/* Tutorial trigger */}
-          <button
-            onClick={() => setShowTutorial(true)}
-            title="Comment récupérer mon fichier CSV ?"
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-[#bef264]
-                       transition-colors ml-4 shrink-0"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            Guide d&apos;extraction
-          </button>
-        </div>
-        <p className="text-xs text-slate-400 mb-4">
-          Exportez votre courbe de charge depuis{" "}
-          <button
-            onClick={() => setShowTutorial(true)}
-            className="text-[#bef264] hover:underline cursor-pointer"
-          >
-            Mon Espace Client Enedis
-          </button>{" "}
-          → format CSV, pas 30 min.
+        <h3 className="text-white font-semibold pr-8 mb-1">
+          Importer vos données Enedis
+        </h3>
+        <p className="text-xs text-slate-400 mb-3">
+          Format CSV courbe de charge, pas 30 min — exporté depuis votre espace client Enedis.
         </p>
+
+        {/* Prominent guide button */}
+        <button
+          onClick={() => setShowTutorial(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-4
+                     bg-blue-950/50 border border-blue-700/40
+                     hover:border-blue-500/60 hover:bg-blue-900/40 transition-colors text-left group"
+        >
+          <div className="w-7 h-7 rounded-lg bg-blue-700/30 flex items-center justify-center shrink-0">
+            <HelpCircle className="w-4 h-4 text-blue-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-blue-300 group-hover:text-blue-200 transition-colors">
+              Comment récupérer ma courbe de charge ?
+            </p>
+            <p className="text-[11px] text-blue-400/60 mt-0.5">
+              Guide pas à pas — Enedis Pro &amp; fournisseurs
+            </p>
+          </div>
+          <ExternalLink className="w-3.5 h-3.5 text-blue-500/50 shrink-0" />
+        </button>
 
         {/* Drop zone */}
         <div

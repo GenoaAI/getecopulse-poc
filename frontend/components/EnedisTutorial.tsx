@@ -25,12 +25,12 @@ const STEPS = [
             Mon Compte Client Enedis <ExternalLink className="w-3 h-3" />
           </a>
           <a
-            href="https://www.enedis.fr/espace-clients-professionnels"
+            href="https://datahub.enedis.fr/"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-[#bef264] hover:underline text-xs"
           >
-            Espace Professionnel Enedis <ExternalLink className="w-3 h-3" />
+            Portail Data Enedis (Pro) <ExternalLink className="w-3 h-3" />
           </a>
         </div>
         <p className="mt-2 text-slate-500 text-xs italic">
