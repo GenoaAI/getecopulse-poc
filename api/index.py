@@ -323,22 +323,29 @@ async def create_checkout_session(payload: CheckoutRequest):
     if payload.address_hash != expected:
         raise HTTPException(status_code=400, detail="address_hash invalide.")
 
-    price_cents = settings.stripe_price_cents
-    short_addr  = payload.address[:200]
+    short_addr = payload.address[:200]
 
-    session = stripe.checkout.Session.create(
-        mode="payment",
-        line_items=[{
+    # Use a predefined Stripe Price ID when available (preferred — avoids creating
+    # throwaway Price objects on every call). Falls back to inline price_data for
+    # local dev without a Stripe dashboard setup.
+    if settings.stripe_price_id:
+        line_items = [{"price": settings.stripe_price_id, "quantity": 1}]
+    else:
+        line_items = [{
             "price_data": {
-                "currency": "eur",
-                "unit_amount": price_cents,
+                "currency":     "eur",
+                "unit_amount":  settings.stripe_price_cents,
                 "product_data": {
                     "name":        "Rapport Énergétique GetEcoPulse",
                     "description": f"Audit complet — {short_addr}",
                 },
             },
             "quantity": 1,
-        }],
+        }]
+
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        line_items=line_items,
         metadata={
             "address_hash": payload.address_hash,
             "address":      short_addr,

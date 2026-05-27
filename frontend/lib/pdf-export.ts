@@ -3,32 +3,19 @@
  *
  * Generates a vector A4 PDF client-side using @react-pdf/renderer.
  * • No html2canvas / jsPDF — text is selectable, fonts are crisp.
- * • Satellite image is pre-fetched as a base64 data URI to avoid CORS
- *   issues inside the renderer's internal fetch.
  * • Dynamic imports keep the renderer (~1 MB) out of the initial bundle.
  * • Must be called from a client-side event handler (never during SSR).
+ *
+ * Image strategy:
+ *   1. Pass satellite_image_url (HTTP) directly to react-pdf — it fetches it
+ *      natively with CORS. Mapbox and Supabase Storage both allow CORS.
+ *   2. If no URL: convert satellite_image_data_uri to a same-origin blob: URL
+ *      so react-pdf can fetch it (fetch("data:...") silently fails in
+ *      @react-pdf/renderer v4 browser builds; fetch("blob:...") works).
  */
 
 import { createElement } from "react";
 import type { AuditResult } from "@/lib/api";
-
-// ── Helper: URL → base64 data URI ────────────────────────────────────────────
-
-async function fetchAsDataUri(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror   = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
 
 // ── Main export function ──────────────────────────────────────────────────────
 
@@ -38,10 +25,27 @@ export async function exportAuditPdf(
   nafCode:    string,
   isRealData: boolean,
 ): Promise<void> {
-  // ── 1. Pre-fetch satellite image ─────────────────────────────────────────
-  const satelliteDataUri = audit.satellite_image_data_uri || (audit.satellite_image_url
-    ? await fetchAsDataUri(audit.satellite_image_url)
-    : null);
+  // ── 1. Resolve satellite image source ────────────────────────────────────
+  let satelliteDataUri: string | null = null;
+  let blobToRevoke: string | null = null;
+
+  if (audit.satellite_image_url) {
+    // react-pdf fetches HTTP URLs natively — CORS is fine for Mapbox/Supabase.
+    satelliteDataUri = audit.satellite_image_url;
+  } else if (audit.satellite_image_data_uri) {
+    // No HTTP URL: convert data URI → blob: URL so react-pdf can fetch it.
+    try {
+      const dataUri = audit.satellite_image_data_uri;
+      const [header, b64] = dataUri.split(",");
+      const mime = header.match(/data:([^;]+)/)?.[1] ?? "image/png";
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: mime });
+      satelliteDataUri = URL.createObjectURL(blob);
+      blobToRevoke = satelliteDataUri;
+    } catch {
+      // fall through — image will be absent from PDF
+    }
+  }
 
   // ── 2. Dynamic imports (deferred until user clicks "Export") ─────────────
   const [{ pdf }, { default: AuditPdfDocument }] = await Promise.all([
@@ -62,6 +66,9 @@ export async function exportAuditPdf(
   // requirement.  Cast here because createElement infers AuditPdfProps, not
   // DocumentProps, even though the runtime element is identical.
   const blob = await pdf(element as Parameters<typeof pdf>[0]).toBlob();
+
+  // Clean up blob URL created for the image (if any)
+  if (blobToRevoke) URL.revokeObjectURL(blobToRevoke);
 
   // ── 4. Trigger browser download ───────────────────────────────────────────
   const isoDate  = new Date().toISOString().slice(0, 10);

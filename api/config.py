@@ -61,7 +61,10 @@ class _EnvSettings(BaseSettings):
     supabase_key: str | None = None
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
-    # Price in euro cents (default 29 €)
+    # Preferred: predefined Price ID from Stripe dashboard (e.g. "price_1AbcDef...")
+    # If set, takes precedence over stripe_price_cents.
+    stripe_price_id: str | None = None
+    # Fallback: price in euro cents used when stripe_price_id is not set (default 29 €)
     stripe_price_cents: int = 2900
     # Comma-separated list of allowed CORS origins (e.g. "https://getecopulse.vercel.app")
     allowed_origins: str = "http://localhost:3000,http://localhost:3001"
@@ -81,6 +84,7 @@ class Settings:
         self.supabase_key: str | None = env.supabase_key
         self.stripe_secret_key: str | None = env.stripe_secret_key
         self.stripe_webhook_secret: str | None = env.stripe_webhook_secret
+        self.stripe_price_id: str | None = env.stripe_price_id
         self.stripe_price_cents: int = env.stripe_price_cents
         self.allowed_origins: list[str] = [o.strip() for o in env.allowed_origins.split(",") if o.strip()]
 

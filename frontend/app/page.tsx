@@ -292,12 +292,15 @@ export default function Home() {
       setAudit(saved.audit);
       setNafCode(saved.nafCode);
       if (saved.audit.address) setAddress(saved.audit.address);
-      // If diag differs from audit.diagnostic, it was real Linky data
-      if (saved.diag && saved.diag !== saved.audit.diagnostic) {
+      // Restore real Linky data only — identified by data_source === "linky".
+      // Reference equality (saved.diag !== saved.audit.diagnostic) is unreliable
+      // after JSON.parse since both are new objects even when semantically equal.
+      if (saved.diag && (saved.diag as { data_source?: string }).data_source === "linky") {
         setRealDiag(saved.diag as AuditResult["diagnostic"]);
       }
       setAddressHash(saved.hash);
       setIsPurchased(true);
+
     } catch { /* ignore malformed data */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -342,9 +345,11 @@ export default function Home() {
     if (!audit || !addressHash) return;
     setCheckingPurchase(true);
     try {
-      // Persist current audit state so it can be restored after Stripe redirect
+      // Persist current audit state so it can be restored after Stripe redirect.
+      // satellite_image_data_uri (~400 KB base64) is included in the payload —
+      // a single entry is well within the 5 MB localStorage limit.
       const savePayload = {
-        audit:   { ...audit, satellite_image_data_uri: undefined },
+        audit:   audit,
         diag:    diag ?? null,
         nafCode,
         hash:    addressHash,
