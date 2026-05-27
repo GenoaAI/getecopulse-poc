@@ -120,16 +120,6 @@ export default function MentionsLegales() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-800 px-6 py-6 text-center text-xs text-slate-500">
-        <p>
-          © 2026 GetEcoPulse —{" "}
-          <Link href="/mentions-legales" className="hover:text-slate-300 transition-colors">Mentions légales</Link>
-          {" · "}
-          <Link href="/cgv" className="hover:text-slate-300 transition-colors">CGV</Link>
-          {" · "}
-          <Link href="/politique-confidentialite" className="hover:text-slate-300 transition-colors">Politique de confidentialité</Link>
-        </p>
-      </footer>
     </div>
   );
 }
