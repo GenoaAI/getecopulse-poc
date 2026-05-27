@@ -443,8 +443,9 @@ export default function Home() {
     <div className="relative min-h-screen bg-[#0f172a] text-white flex flex-col overflow-x-hidden">
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur border-b border-slate-800 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center gap-4 flex-wrap">
+      <header className="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur border-b border-slate-800 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+
           {/* Logo */}
           <div className="flex items-center gap-2 shrink-0">
             <Zap className="w-5 h-5 text-[#bef264]" />
@@ -452,9 +453,10 @@ export default function Home() {
             <span className="text-[10px] text-slate-500 ml-0.5 tracking-widest uppercase">PoC</span>
           </div>
 
-          {/* Search bar */}
-          <div className="flex flex-1 items-center gap-2 min-w-0">
-            <div className="relative flex-1 max-w-lg">
+          {/* Search bar — full-width on mobile, flex-1 on desktop */}
+          <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
+            {/* Input + GPS */}
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
               <input
                 type="text"
@@ -462,7 +464,7 @@ export default function Home() {
                 onChange={(e) => setAddress(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAnalyse()}
                 placeholder="Adresse complète du bâtiment…"
-                className="w-full pl-9 pr-9 py-2 rounded-lg bg-slate-800 border border-slate-700
+                className="w-full pl-9 pr-9 py-2.5 rounded-lg bg-slate-800 border border-slate-700
                            text-sm text-white placeholder:text-slate-500
                            focus:outline-none focus:ring-1 focus:ring-[#bef264]/50 focus:border-[#bef264]/50"
               />
@@ -479,32 +481,35 @@ export default function Home() {
                 }
               </button>
             </div>
-            <select
-              value={nafCode}
-              onChange={(e) => setNafCode(e.target.value)}
-              className="py-2 px-3 rounded-lg bg-slate-800 border border-slate-700 text-sm text-white
-                         focus:outline-none focus:ring-1 focus:ring-[#bef264]/50"
-            >
-              {NAF_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleAnalyse}
-              disabled={loading || !address.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
-                         bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
-                         disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
-              Analyser
-            </button>
+            {/* Select + Analyser — side by side on their own row on mobile */}
+            <div className="flex items-center gap-2">
+              <select
+                value={nafCode}
+                onChange={(e) => setNafCode(e.target.value)}
+                className="flex-1 sm:flex-none py-2.5 px-3 rounded-lg bg-slate-800 border border-slate-700
+                           text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#bef264]/50"
+              >
+                {NAF_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleAnalyse}
+                disabled={loading || !address.trim()}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold
+                           bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                Analyser
+              </button>
+            </div>{/* end select+analyser row */}
 
             {/* PDF export — visible only when report is unlocked */}
             {audit && isPurchased && (
