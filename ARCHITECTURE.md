@@ -51,7 +51,12 @@ Toute constante numérique (prix, ratio physique, paramètre de modèle, seuil s
 ### Pipeline d'Audit (SSE streaming, `POST /api/audit`)
 6 étapes séquentielles émises en Server-Sent Events :
 1. Géocodage Nominatim (avec fallback multi-requêtes : adresse complète → "Nom, Ville" → "Nom, CP")
-2. Empreinte OSM (Overpass API → polygone bâtiment ; Nominatim parcel en fallback)
+2. Empreinte OSM — stratégie à 3 niveaux :
+   - **Nominatim polygone** : recherche par adresse, retourne le polygone OSM directement.
+     - Si le polygone est > `site_area_threshold_m2` (15 000 m²) : `_maybe_refine_with_buildings` tente d'affiner avec les bâtiments Overpass à l'intérieur du site.
+     - Si la diagonale du bbox > 1 500 m (polygone admin/postal) : la recherche Overpass est restreinte à un rayon de 750 m autour du point géocodé, sans filtre de containment. Si aucun bâtiment n'est trouvé, le résultat Nominatim est **rejeté** (retour `None`) pour passer au niveau suivant.
+   - **Overpass point-based** : query `way["building"]` dans un rayon configurable autour du centroïde ; sélectionne le bâtiment qui contient le point, sinon le plus grand.
+   - **Fallback** : point géocodé seul, `area_m2 = null`, zoom 20.
 3. Image satellite Mapbox @2x (zoom calculé sur le bâtiment le plus proche ≥ 150 m², cap à 18)
 4. Données climatiques Open-Meteo + Vision IA Gemini (parallèles)
 5. Vérification de plausibilité Gemini + Search grounding
@@ -65,22 +70,33 @@ Toute constante numérique (prix, ratio physique, paramètre de modèle, seuil s
 
 ### Analyse de la Puissance Souscrite — "Quick Win"
 
-Déclenchée lors de l'upload Enedis si `puissance_souscrite_kva` est fourni.
+Deux chemins déclenchent ce calcul (le résultat est identique) :
 
-**Calculs (`api/index.py`, post-parsing Linky) :**
-- `pic_puissance_reelle_kva` — valeur max absolue sur l'ensemble des slots mesurés (`peak_kw_absolute` retourné par le parser ; kVA ≈ kW, PF = 1 conservative).
-- `sur_capacite_kva = puissance_souscrite_kva − pic_puissance_reelle_kva`
+**Chemin A — Serveur** : le champ `puissance_souscrite_kva` est renseigné dans le formulaire `CsvUpload` avant l'upload. Le calcul a lieu dans `api/index.py` post-parsing Linky.
+
+**Chemin B — Client** : l'utilisateur n'a pas renseigné le champ à l'upload. `linky_parser.py` retourne `peak_kw_absolute` (max absolu sur tous les slots mesurés) dans `load_profile`. Un bandeau inline dans `page.tsx` permet de saisir la puissance souscrite après coup. Le calcul est effectué côté client, directement dans le composant React.
+
+**Formules (identiques serveur et client) :**
+- `pic_puissance_reelle_kva` ← `peak_kw_absolute` (kVA ≈ kW, PF = 1 conservative)
 - `puissance_recommandee_kva = ceil(pic × 1.10 / 10) × 10` (marge +10 %, arrondi à la dizaine supérieure)
-- `economie_abonnement_estimee_eur = max(0, sur_capacite) × COUT_MOYEN_KVA`
+- `sur_capacite_kva = max(0, puissance_souscrite_kva − puissance_recommandee_kva)` ⚠️ on soustrait `recommandee`, **pas** `pic_reel`
+- `economie_abonnement_estimee_eur = sur_capacite × COUT_MOYEN_KVA`
   - Constante `COUT_MOYEN_KVA = 20 €/kVA/an` (estimation conservative B2B réseau, définie dans `index.py`).
+- `is_over_dimensioned = puissance_souscrite_kva > puissance_recommandee_kva`
+
+**Validation UX :** si `puissance_souscrite_kva < pic_reel`, la saisie est refusée (physiquement impossible) avec message d'erreur rouge.
 
 **Réponse JSON :** le bloc `power_optimization` est inclus dans `diagnostic` (ou `null` si `puissance_souscrite_kva = 0`).
 
+**Pattern PDF (`page.tsx`) :**
+- `effectivePo` est calculé au niveau du composant (`serverPo ?? client-computed`).
+- `diagForPdf = { ...diag, power_optimization: effectivePo }` fusionne la valeur effective avant l'appel `exportAuditPdf()`, garantissant que le PDF reçoit toujours la valeur correcte quel que soit le chemin utilisé.
+
 **Restitution (frontend + PDF) :**
-- Encart "⚡ Optimisation Tarifaire Immédiate — Quick Win" affiché après le badge "Données réelles actives", uniquement si `power_optimization` est non nul.
-- 4 métriques : puissance facturée / pic réel / sur-dimensionnement / économie annuelle (mise en évidence).
+- Encart "Optimisation Tarifaire Immédiate — Quick Win" affiché après le badge "Données réelles actives", uniquement si `power_optimization` est non nul.
+- 4 métriques : puissance facturée / pic réel / sur-dimensionnement / économie annuelle.
 - CTA actionnable : demande d'abaissement du contrat à `puissance_recommandee_kva` auprès du fournisseur.
-- Section identique générée dans le PDF (`AuditPdfDocument.tsx`), insérée entre le plan d'action et les annexes techniques.
+- Section identique dans le PDF (`AuditPdfDocument.tsx`), insérée entre le plan d'action et les annexes techniques, stylée dans le thème clair du PDF (fond ambre-50, métriques sur fond gris clair).
 - Accès **gratuit** (étape 3 du tunnel freemium).
 
 ### Support Automatisé (Human-in-the-loop)
