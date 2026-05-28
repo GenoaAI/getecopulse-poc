@@ -339,10 +339,10 @@ export default function Home() {
   }, []);
 
   async function handleExportPdf() {
-    if (!audit || !diag) return;
+    if (!audit || !diagForPdf) return;
     setPdfLoading(true);
     try {
-      await exportAuditPdf(audit, diag, nafCode, !!realDiag);
+      await exportAuditPdf(audit, diagForPdf, nafCode, !!realDiag);
     } finally {
       setPdfLoading(false);
     }
@@ -433,6 +433,30 @@ export default function Home() {
   const phys = audit?.physical_data;
   // Real Linky data takes priority over the synthetic diagnostic
   const diag = (realDiag ?? audit?.diagnostic) as AuditResult["diagnostic"] | undefined;
+
+  // ── Effective power optimisation (server-computed OR client-computed) ──────
+  // Computed here so it can be used both in the JSX and in the PDF export.
+  type PowerOpt = NonNullable<AuditResult["diagnostic"]["power_optimization"]>;
+  const serverPo = (diag as (AuditResult["diagnostic"] & { power_optimization?: PowerOpt | null }) | undefined)?.power_optimization ?? null;
+  const peakKw   = realDiag?.load_profile?.peak_kw_absolute ?? null;
+  const psFloat  = parseFloat(puissanceSouscritePage);
+  const effectivePo: PowerOpt | null = serverPo ?? (() => {
+    if (!peakKw || peakKw <= 0 || !(psFloat >= peakKw)) return null;
+    const recommandee = Math.ceil(peakKw * 1.10 / 10) * 10;
+    const surCapacite = Math.round(Math.max(0, psFloat - recommandee) * 10) / 10;
+    return {
+      puissance_souscrite_kva:          psFloat,
+      pic_puissance_reelle_kva:          Math.round(peakKw * 10) / 10,
+      sur_capacite_kva:                  surCapacite,
+      puissance_recommandee_kva:         recommandee,
+      economie_abonnement_estimee_eur:   Math.round(surCapacite * 20),
+      is_over_dimensioned:               psFloat > recommandee,
+    };
+  })();
+  // Merge effectivePo into diag so PDF export always has the latest value
+  const diagForPdf = diag && effectivePo
+    ? { ...diag, power_optimization: effectivePo }
+    : diag;
 
   const center: [number, number] = audit
     ? (phys?.footprint?.centroid
@@ -1143,41 +1167,14 @@ export default function Home() {
 
               {/* ── Quick Win : Optimisation Tarifaire Immédiate ── */}
               {(() => {
-                type PO = {
-                  puissance_souscrite_kva: number; pic_puissance_reelle_kva: number;
-                  sur_capacite_kva: number; puissance_recommandee_kva: number;
-                  economie_abonnement_estimee_eur: number; is_over_dimensioned: boolean;
-                };
-                // Priority 1 : server-computed (CSV upload with field pre-filled)
-                const serverPo = (diag as AuditResult["diagnostic"] & { power_optimization?: PO | null })?.power_optimization;
-                // Priority 2 : client-computed from inline input (CSV already uploaded, field was empty)
-                const peak = realDiag?.load_profile?.peak_kw_absolute;
-                const ps   = parseFloat(puissanceSouscritePage);
-                // Sanity check: subscribed power must be ≥ actual peak
-                // (a contract below the measured peak is physically impossible or a typo)
-                const inputInvalid = ps > 0 && peak && peak > 0 && ps < peak;
-
-                const localPo: PO | null = (!serverPo && peak && peak > 0 && ps >= peak)
-                  ? (() => {
-                      const recommandee = Math.ceil(peak * 1.10 / 10) * 10;
-                      const surCapacite = Math.round(Math.max(0, ps - recommandee) * 10) / 10;
-                      return {
-                        puissance_souscrite_kva:          ps,
-                        pic_puissance_reelle_kva:          Math.round(peak * 10) / 10,
-                        sur_capacite_kva:                  surCapacite,
-                        puissance_recommandee_kva:         recommandee,
-                        economie_abonnement_estimee_eur:   Math.round(surCapacite * 20),
-                        is_over_dimensioned:               ps > recommandee,
-                      };
-                    })()
-                  : null;
-
-                const po = serverPo ?? localPo;
+                // Use component-level values (also used by PDF export via diagForPdf)
+                const inputInvalid = psFloat > 0 && peakKw !== null && peakKw > 0 && psFloat < peakKw;
+                const po = effectivePo;
 
                 return (
                   <>
                     {/* Inline input — always visible when using client-side calculation */}
-                    {realDiag && !serverPo && peak && peak > 0 && (
+                    {realDiag && !serverPo && peakKw !== null && peakKw > 0 && (
                       <div className={`mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
                                       rounded-xl border px-4 py-3 transition-colors
                                       ${inputInvalid
@@ -1192,8 +1189,8 @@ export default function Home() {
                           </p>
                           <p className="text-xs text-slate-500">
                             {inputInvalid
-                              ? <>La puissance saisie (<span className="text-red-300 font-medium">{ps} kVA</span>) est inférieure à votre pic réel mesuré (<span className="text-slate-300 font-medium">{Math.round(peak * 10) / 10} kVA</span>). Un contrat ne peut pas être inférieur à la consommation réelle.</>
-                              : <>Pic réel mesuré : <span className="text-slate-300 font-medium">{Math.round(peak * 10) / 10} kVA</span>. Indiquez votre puissance souscrite pour calculer vos économies potentielles.</>
+                              ? <>La puissance saisie (<span className="text-red-300 font-medium">{psFloat} kVA</span>) est inférieure à votre pic réel mesuré (<span className="text-slate-300 font-medium">{Math.round((peakKw ?? 0) * 10) / 10} kVA</span>). Un contrat ne peut pas être inférieur à la consommation réelle.</>
+                              : <>Pic réel mesuré : <span className="text-slate-300 font-medium">{Math.round((peakKw ?? 0) * 10) / 10} kVA</span>. Indiquez votre puissance souscrite pour calculer vos économies potentielles.</>
                             }
                           </p>
                         </div>
