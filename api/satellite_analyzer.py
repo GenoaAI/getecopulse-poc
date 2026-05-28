@@ -341,13 +341,17 @@ class BuildingAnalyzer:
         ov,
         geo_lat: float | None = None,
         geo_lon: float | None = None,
-    ) -> dict:
+    ) -> dict | None:
         """
         If the Nominatim parcel is larger than the threshold, replace its area_m2
         with the sum of individual building footprints found by Overpass inside the
         site boundary.  The satellite image is then re-centred and re-zoomed on the
         NEAREST building to the geocoded address point — not the combined bbox of all
         buildings (which can span hundreds of metres in an industrial zone).
+
+        Returns None when the Nominatim polygon is clearly an administrative or
+        postal boundary (bbox diagonal > MAX_DIAG_M and no buildings found), so the
+        caller can fall through to the Overpass point-based strategy instead.
         """
         if not base_result.get("bbox"):
             return base_result
@@ -355,13 +359,47 @@ class BuildingAnalyzer:
         if parcel_area <= ov.site_area_threshold_m2:
             return base_result
 
+        bbox  = base_result["bbox"]
+        c_lat = base_result["centroid_lat"]
+        c_lon = base_result["centroid_lon"]
+
+        # Detect large administrative / postal polygons by bbox diagonal.
+        # A real building or campus bbox is rarely > 1 500 m across;
+        # a commune or postcode boundary routinely spans several km.
+        lat_span_m = (bbox["max_lat"] - bbox["min_lat"]) * math.radians(1) * _EARTH_RADIUS_M
+        lon_span_m = (bbox["max_lon"] - bbox["min_lon"]) * math.radians(1) * _EARTH_RADIUS_M * math.cos(math.radians(c_lat))
+        bbox_diag_m = math.hypot(lat_span_m, lon_span_m)
+        MAX_DIAG_M  = 1500.0
+
+        if bbox_diag_m > MAX_DIAG_M:
+            # Restrict the search to a tight box (MAX_DIAG_M/2 radius) around the
+            # geocoded point.  Skip the polygon-containment check because the target
+            # building is near the address point, not spread over the whole boundary.
+            ref_lat = geo_lat if geo_lat is not None else c_lat
+            ref_lon = geo_lon if geo_lon is not None else c_lon
+            half_lat = (MAX_DIAG_M / 2) / (math.radians(1) * _EARTH_RADIUS_M)
+            half_lon = half_lat / max(math.cos(math.radians(ref_lat)), 0.01)
+            search_bbox = {
+                "min_lat": ref_lat - half_lat, "max_lat": ref_lat + half_lat,
+                "min_lon": ref_lon - half_lon, "max_lon": ref_lon + half_lon,
+            }
+            filter_polygon = None  # skip containment — buildings near the point are the target
+            print(f"    [INFO] Parcel bbox {bbox_diag_m:.0f} m > {MAX_DIAG_M:.0f} m (likely admin/postal boundary)"
+                  f" — restricting Overpass search to {MAX_DIAG_M/1000:.2f} km around geocoded point")
+        else:
+            search_bbox    = bbox
+            filter_polygon = site_polygon
+
         print(f"    [INFO] Large parcel ({parcel_area:.0f} m2 > threshold {ov.site_area_threshold_m2} m2)"
               " — querying individual buildings via Overpass...")
-        buildings = self._query_buildings_in_bbox(base_result["bbox"], site_polygon, ov)
+        buildings = self._query_buildings_in_bbox(search_bbox, filter_polygon, ov)
 
         if not buildings:
-            print("    [WARN] No individual buildings found — keeping parcel area as estimate")
-            return base_result
+            # If the parcel was large enough to trigger refinement but we found
+            # nothing, the Nominatim polygon is useless as a building estimate.
+            # Return None so fetch_building_footprint tries Overpass point-search.
+            print("    [WARN] No individual buildings found — discarding Nominatim polygon, trying Overpass")
+            return None
 
         total_roof = sum(b["area_m2"] for b in buildings)
         print(f"    [Overpass] {len(buildings)} building(s) inside site — total roof: {total_roof:.0f} m2")
@@ -404,13 +442,16 @@ class BuildingAnalyzer:
     def _query_buildings_in_bbox(
         self,
         bbox: dict,
-        site_polygon: list[tuple[float, float]],
+        site_polygon: list[tuple[float, float]] | None,
         ov,
     ) -> list[dict]:
         """
         Query Overpass for all way["building"] elements inside *bbox*,
-        then keep only those whose centroid lies within *site_polygon*
-        (point-in-polygon guard against buildings that touch the bbox edge).
+        then — when site_polygon is provided — keep only those whose centroid
+        lies within *site_polygon* (point-in-polygon guard against buildings
+        that touch the bbox edge).
+        Pass site_polygon=None to skip the containment check (used when the
+        search bbox is already tightly centred on the geocoded point).
         Returns a list of {nodes_latlon, polygon_coords, area_m2} dicts.
         """
         s, w, n, e = bbox["min_lat"], bbox["min_lon"], bbox["max_lat"], bbox["max_lon"]
@@ -437,8 +478,8 @@ class BuildingAnalyzer:
             # Centroid of this building
             c_lat = sum(n[0] for n in nodes) / len(nodes)
             c_lon = sum(n[1] for n in nodes) / len(nodes)
-            # Keep only buildings whose centroid is inside the Nominatim site polygon
-            if not _point_in_polygon(c_lat, c_lon, site_polygon):
+            # Optional: keep only buildings whose centroid is inside the site polygon
+            if site_polygon is not None and not _point_in_polygon(c_lat, c_lon, site_polygon):
                 continue
             area = _polygon_area_m2(nodes)
             if area < 50:   # ignore sheds, bike shelters, etc.
