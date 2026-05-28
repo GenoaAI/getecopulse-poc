@@ -1153,7 +1153,11 @@ export default function Home() {
                 // Priority 2 : client-computed from inline input (CSV already uploaded, field was empty)
                 const peak = realDiag?.load_profile?.peak_kw_absolute;
                 const ps   = parseFloat(puissanceSouscritePage);
-                const localPo: PO | null = (!serverPo && peak && peak > 0 && ps > 0)
+                // Sanity check: subscribed power must be ≥ actual peak
+                // (a contract below the measured peak is physically impossible or a typo)
+                const inputInvalid = ps > 0 && peak && peak > 0 && ps < peak;
+
+                const localPo: PO | null = (!serverPo && peak && peak > 0 && ps >= peak)
                   ? {
                       puissance_souscrite_kva:          ps,
                       pic_puissance_reelle_kva:          Math.round(peak * 10) / 10,
@@ -1170,16 +1174,23 @@ export default function Home() {
                   <>
                     {/* Inline input — shown when CSV is loaded but no value entered yet */}
                     {realDiag && !po && peak && peak > 0 && (
-                      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
-                                      rounded-xl border border-amber-500/20 bg-amber-900/5 px-4 py-3">
-                        <Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+                      <div className={`mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
+                                      rounded-xl border px-4 py-3 transition-colors
+                                      ${inputInvalid
+                                        ? "border-red-500/30 bg-red-900/10"
+                                        : "border-amber-500/20 bg-amber-900/5"}`}>
+                        <Zap className={`w-4 h-4 shrink-0 mt-0.5 sm:mt-0 ${inputInvalid ? "text-red-400" : "text-amber-400"}`} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-amber-200 mb-0.5">
-                            Optimisation tarifaire disponible
+                          <p className={`text-sm font-medium mb-0.5 ${inputInvalid ? "text-red-300" : "text-amber-200"}`}>
+                            {inputInvalid
+                              ? "Valeur incorrecte — vérifiez votre saisie"
+                              : "Optimisation tarifaire disponible"}
                           </p>
                           <p className="text-xs text-slate-500">
-                            Pic réel mesuré : <span className="text-slate-300 font-medium">{Math.round(peak * 10) / 10} kVA</span>.
-                            Indiquez votre puissance souscrite pour calculer vos économies potentielles.
+                            {inputInvalid
+                              ? <>La puissance saisie (<span className="text-red-300 font-medium">{ps} kVA</span>) est inférieure à votre pic réel mesuré (<span className="text-slate-300 font-medium">{Math.round(peak * 10) / 10} kVA</span>). Un contrat ne peut pas être inférieur à la consommation réelle.</>
+                              : <>Pic réel mesuré : <span className="text-slate-300 font-medium">{Math.round(peak * 10) / 10} kVA</span>. Indiquez votre puissance souscrite pour calculer vos économies potentielles.</>
+                            }
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1191,9 +1202,11 @@ export default function Home() {
                               value={puissanceSouscritePage}
                               onChange={(e) => setPuissanceSouscritePage(e.target.value)}
                               placeholder="ex: 250"
-                              className="w-28 pl-3 pr-10 py-1.5 rounded-lg bg-slate-800 border border-slate-700
-                                         text-sm text-white placeholder:text-slate-500
-                                         focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"
+                              className={`w-28 pl-3 pr-10 py-1.5 rounded-lg bg-slate-800 text-sm text-white
+                                         placeholder:text-slate-500 focus:outline-none border transition-colors
+                                         ${inputInvalid
+                                           ? "border-red-500/50 focus:ring-1 focus:ring-red-500/50"
+                                           : "border-slate-700 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"}`}
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">kVA</span>
                           </div>
