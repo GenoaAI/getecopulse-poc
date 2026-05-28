@@ -1321,6 +1321,26 @@ export default function Home() {
         />
       )}
 
+      {/* ── Floating PDF button — visible once report is unlocked & scrolled ── */}
+      {audit && isPurchased && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={handleExportPdf}
+            disabled={pdfLoading}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl shadow-2xl
+                       bg-[#bef264] text-slate-900 text-sm font-bold
+                       hover:bg-[#a3e635] active:scale-95 transition-all
+                       disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {pdfLoading ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Génération…</>
+            ) : (
+              <><FileDown className="w-4 h-4" /> Télécharger le rapport PDF</>
+            )}
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
