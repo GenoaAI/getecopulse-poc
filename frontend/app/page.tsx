@@ -264,6 +264,9 @@ export default function Home() {
   // Geolocation state
   const [geoLoading, setGeoLoading] = useState(false);
 
+  // Quick Win — puissance souscrite saisie après upload CSV
+  const [puissanceSouscritePage, setPuissanceSouscritePage] = useState<string>("");
+
   // Purchase / unlock state
   const [isPurchased,      setIsPurchased]      = useState(false);
   const [addressHash,      setAddressHash]      = useState<string | null>(null);
@@ -1140,64 +1143,119 @@ export default function Home() {
 
               {/* ── Quick Win : Optimisation Tarifaire Immédiate ── */}
               {(() => {
-                const po = (diag as AuditResult["diagnostic"] & { power_optimization?: { puissance_souscrite_kva: number; pic_puissance_reelle_kva: number; sur_capacite_kva: number; puissance_recommandee_kva: number; economie_abonnement_estimee_eur: number; is_over_dimensioned: boolean } | null })?.power_optimization;
-                if (!po) return null;
+                type PO = {
+                  puissance_souscrite_kva: number; pic_puissance_reelle_kva: number;
+                  sur_capacite_kva: number; puissance_recommandee_kva: number;
+                  economie_abonnement_estimee_eur: number; is_over_dimensioned: boolean;
+                };
+                // Priority 1 : server-computed (CSV upload with field pre-filled)
+                const serverPo = (diag as AuditResult["diagnostic"] & { power_optimization?: PO | null })?.power_optimization;
+                // Priority 2 : client-computed from inline input (CSV already uploaded, field was empty)
+                const peak = realDiag?.load_profile?.peak_kw_absolute;
+                const ps   = parseFloat(puissanceSouscritePage);
+                const localPo: PO | null = (!serverPo && peak && peak > 0 && ps > 0)
+                  ? {
+                      puissance_souscrite_kva:          ps,
+                      pic_puissance_reelle_kva:          Math.round(peak * 10) / 10,
+                      sur_capacite_kva:                  Math.round(Math.max(0, ps - peak) * 10) / 10,
+                      puissance_recommandee_kva:         Math.ceil(peak * 1.10 / 10) * 10,
+                      economie_abonnement_estimee_eur:   Math.round(Math.max(0, ps - peak) * 20),
+                      is_over_dimensioned:               ps > peak,
+                    }
+                  : null;
+
+                const po = serverPo ?? localPo;
+
                 return (
-                  <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-900/10 overflow-hidden">
-                    {/* Header */}
-                    <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-xs font-semibold text-amber-300 uppercase tracking-widest">
-                        Optimisation Tarifaire Immédiate — Quick Win
-                      </span>
-                    </div>
-                    {/* Metrics grid */}
-                    <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Puissance facturée</p>
-                        <p className="text-lg font-bold text-white">{po.puissance_souscrite_kva} <span className="text-xs font-normal text-slate-400">kVA</span></p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Pic réel mesuré</p>
-                        <p className="text-lg font-bold text-white">{po.pic_puissance_reelle_kva} <span className="text-xs font-normal text-slate-400">kVA</span></p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Sur-dimensionnement</p>
-                        <p className={`text-lg font-bold ${po.is_over_dimensioned ? "text-amber-400" : "text-slate-400"}`}>
-                          {po.is_over_dimensioned ? `+${po.sur_capacite_kva}` : "0"} <span className="text-xs font-normal text-slate-400">kVA</span>
-                        </p>
-                      </div>
-                      <div className="col-span-2 sm:col-span-1 rounded-xl bg-[#bef264]/10 border border-[#bef264]/30 px-4 py-3 flex flex-col justify-center">
-                        <p className="text-[10px] text-[#bef264]/70 uppercase tracking-wider mb-0.5">Économie annuelle estimée</p>
-                        <p className="text-2xl font-bold text-[#bef264]">
-                          {po.economie_abonnement_estimee_eur.toLocaleString("fr-FR")} €<span className="text-sm font-normal text-[#bef264]/60">/an</span>
-                        </p>
-                      </div>
-                    </div>
-                    {/* CTA */}
-                    {po.is_over_dimensioned && (
-                      <div className="px-5 pb-4">
-                        <div className="rounded-lg bg-slate-800/60 border border-slate-700 px-4 py-3">
-                          <p className="text-sm text-slate-200">
-                            <span className="font-semibold text-white">Action immédiate :</span>{" "}
-                            Contactez votre fournisseur d&apos;énergie pour abaisser votre contrat à{" "}
-                            <span className="font-bold text-[#bef264]">{po.puissance_recommandee_kva} kVA</span>.
-                            L&apos;économie sur la part fixe de votre facture sera instantanée.
+                  <>
+                    {/* Inline input — shown when CSV is loaded but no value entered yet */}
+                    {realDiag && !po && peak && peak > 0 && (
+                      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
+                                      rounded-xl border border-amber-500/20 bg-amber-900/5 px-4 py-3">
+                        <Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-amber-200 mb-0.5">
+                            Optimisation tarifaire disponible
                           </p>
-                          <p className="mt-2 text-[10px] text-slate-600 italic">
-                            Estimation basée sur un coût moyen réseau de 20 €/kVA/an. kVA ≈ kW (facteur de puissance = 1, hypothèse conservative).
+                          <p className="text-xs text-slate-500">
+                            Pic réel mesuré : <span className="text-slate-300 font-medium">{Math.round(peak * 10) / 10} kVA</span>.
+                            Indiquez votre puissance souscrite pour calculer vos économies potentielles.
                           </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={puissanceSouscritePage}
+                              onChange={(e) => setPuissanceSouscritePage(e.target.value)}
+                              placeholder="ex: 250"
+                              className="w-28 pl-3 pr-10 py-1.5 rounded-lg bg-slate-800 border border-slate-700
+                                         text-sm text-white placeholder:text-slate-500
+                                         focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">kVA</span>
+                          </div>
                         </div>
                       </div>
                     )}
-                    {!po.is_over_dimensioned && (
-                      <div className="px-5 pb-4">
-                        <p className="text-sm text-slate-400">
-                          Votre contrat est correctement dimensionné par rapport à votre pic de consommation réel.
-                        </p>
+
+                    {/* Quick Win card */}
+                    {po && (
+                      <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-900/10 overflow-hidden">
+                        <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span className="text-xs font-semibold text-amber-300 uppercase tracking-widest">
+                            Optimisation Tarifaire Immédiate — Quick Win
+                          </span>
+                        </div>
+                        <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Puissance facturée</p>
+                            <p className="text-lg font-bold text-white">{po.puissance_souscrite_kva} <span className="text-xs font-normal text-slate-400">kVA</span></p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Pic réel mesuré</p>
+                            <p className="text-lg font-bold text-white">{po.pic_puissance_reelle_kva} <span className="text-xs font-normal text-slate-400">kVA</span></p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Sur-dimensionnement</p>
+                            <p className={`text-lg font-bold ${po.is_over_dimensioned ? "text-amber-400" : "text-slate-400"}`}>
+                              {po.is_over_dimensioned ? `+${po.sur_capacite_kva}` : "0"} <span className="text-xs font-normal text-slate-400">kVA</span>
+                            </p>
+                          </div>
+                          <div className="col-span-2 sm:col-span-1 rounded-xl bg-[#bef264]/10 border border-[#bef264]/30 px-4 py-3 flex flex-col justify-center">
+                            <p className="text-[10px] text-[#bef264]/70 uppercase tracking-wider mb-0.5">Économie annuelle estimée</p>
+                            <p className="text-2xl font-bold text-[#bef264]">
+                              {po.economie_abonnement_estimee_eur.toLocaleString("fr-FR")} €<span className="text-sm font-normal text-[#bef264]/60">/an</span>
+                            </p>
+                          </div>
+                        </div>
+                        {po.is_over_dimensioned ? (
+                          <div className="px-5 pb-4">
+                            <div className="rounded-lg bg-slate-800/60 border border-slate-700 px-4 py-3">
+                              <p className="text-sm text-slate-200">
+                                <span className="font-semibold text-white">Action immédiate :</span>{" "}
+                                Contactez votre fournisseur d&apos;énergie pour abaisser votre contrat à{" "}
+                                <span className="font-bold text-[#bef264]">{po.puissance_recommandee_kva} kVA</span>.
+                                L&apos;économie sur la part fixe de votre facture sera instantanée.
+                              </p>
+                              <p className="mt-2 text-[10px] text-slate-600 italic">
+                                Estimation basée sur un coût moyen réseau de 20 €/kVA/an. kVA ≈ kW (PF = 1, hypothèse conservative).
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="px-5 pb-4">
+                            <p className="text-sm text-slate-400">
+                              Votre contrat est correctement dimensionné par rapport à votre pic de consommation réel.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 );
               })()}
 

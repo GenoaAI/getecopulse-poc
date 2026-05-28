@@ -69,6 +69,8 @@ export interface AuditResult {
       weekend_kw: number[];
       labels: string[];
       peak_hours: [number, number];
+      /** Absolute max power across all measured slots (kW) — from Linky data only */
+      peak_kw_absolute?: number;
     };
     /** GHG Protocol Scope 2 — tonnes CO2e wasted per year */
     wasted_tco2e: number;
