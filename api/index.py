@@ -288,15 +288,17 @@ async def real_diagnostic(
     )
     power_optimization = None
     if puissance_souscrite_kva > 0 and pic_kva > 0:
-        sur_capacite = round(puissance_souscrite_kva - pic_kva, 1)
-        economie_eur = round(max(0.0, sur_capacite) * COUT_MOYEN_KVA)
+        # sur_capacite and economy are based on recommended (not raw peak)
+        # so the CTA is always coherent: "lower to X kVA" only when X < subscribed
+        sur_capacite = round(max(0.0, puissance_souscrite_kva - (recommandee_kva or 0)), 1)
+        economie_eur = round(sur_capacite * COUT_MOYEN_KVA)
         power_optimization = {
-            "puissance_souscrite_kva":       puissance_souscrite_kva,
-            "pic_puissance_reelle_kva":       round(pic_kva, 1),
-            "sur_capacite_kva":               round(max(0.0, sur_capacite), 1),
-            "puissance_recommandee_kva":      recommandee_kva,
+            "puissance_souscrite_kva":        puissance_souscrite_kva,
+            "pic_puissance_reelle_kva":        round(pic_kva, 1),
+            "sur_capacite_kva":                sur_capacite,
+            "puissance_recommandee_kva":       recommandee_kva,
             "economie_abonnement_estimee_eur": economie_eur,
-            "is_over_dimensioned":            sur_capacite > 0,
+            "is_over_dimensioned":             puissance_souscrite_kva > (recommandee_kva or 0),
         }
 
     return {                                                          # noqa: E501 (kept for readability)

@@ -1158,14 +1158,18 @@ export default function Home() {
                 const inputInvalid = ps > 0 && peak && peak > 0 && ps < peak;
 
                 const localPo: PO | null = (!serverPo && peak && peak > 0 && ps >= peak)
-                  ? {
-                      puissance_souscrite_kva:          ps,
-                      pic_puissance_reelle_kva:          Math.round(peak * 10) / 10,
-                      sur_capacite_kva:                  Math.round(Math.max(0, ps - peak) * 10) / 10,
-                      puissance_recommandee_kva:         Math.ceil(peak * 1.10 / 10) * 10,
-                      economie_abonnement_estimee_eur:   Math.round(Math.max(0, ps - peak) * 20),
-                      is_over_dimensioned:               ps > peak,
-                    }
+                  ? (() => {
+                      const recommandee = Math.ceil(peak * 1.10 / 10) * 10;
+                      const surCapacite = Math.round(Math.max(0, ps - recommandee) * 10) / 10;
+                      return {
+                        puissance_souscrite_kva:          ps,
+                        pic_puissance_reelle_kva:          Math.round(peak * 10) / 10,
+                        sur_capacite_kva:                  surCapacite,
+                        puissance_recommandee_kva:         recommandee,
+                        economie_abonnement_estimee_eur:   Math.round(surCapacite * 20),
+                        is_over_dimensioned:               ps > recommandee,
+                      };
+                    })()
                   : null;
 
                 const po = serverPo ?? localPo;
