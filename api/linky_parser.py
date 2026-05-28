@@ -269,6 +269,10 @@ def parse_linky_csv(file_bytes: bytes) -> dict:
     weekday_kw = _avg_slot(wd_days) if wd_days else [0.0] * 48
     weekend_kw = _avg_slot(we_days) if we_days else weekday_kw
 
+    # Absolute peak power (max single measured slot across all days)
+    all_kw = [v for days in [wd_days, we_days] for day in days for v in day if v is not None]
+    peak_kw_absolute = round(max(all_kw), 1) if all_kw else 0.0
+
     # Annual energy extrapolation
     SLOT_H = 0.5
     wd_daily_kwh = sum(weekday_kw) * SLOT_H
@@ -288,11 +292,12 @@ def parse_linky_csv(file_bytes: bytes) -> dict:
     labels = [f"{i // 2:02d}:{30 * (i % 2):02d}" for i in range(48)]
 
     return {
-        "weekday_kw": weekday_kw,
-        "weekend_kw": weekend_kw,
-        "labels":     labels,
-        "peak_hours": [peak_start, peak_end],
-        "source":     "linky",
-        "annual_kwh": annual_kwh,
-        "days_count": len(wd_days) + len(we_days),
+        "weekday_kw":       weekday_kw,
+        "weekend_kw":       weekend_kw,
+        "labels":           labels,
+        "peak_hours":       [peak_start, peak_end],
+        "source":           "linky",
+        "annual_kwh":       annual_kwh,
+        "days_count":       len(wd_days) + len(we_days),
+        "peak_kw_absolute": peak_kw_absolute,
     }

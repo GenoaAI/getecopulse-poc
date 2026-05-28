@@ -11,6 +11,7 @@ if _HERE not in sys.path:
 import asyncio
 import base64
 import json
+import math
 from contextlib import asynccontextmanager
 
 import hashlib
@@ -207,11 +208,15 @@ async def audit_building(payload: AuditRequest):
     )
 
 
+COUT_MOYEN_KVA = 20.0  # €/kVA/an — estimation conservative B2B réseau
+
+
 @app.post("/api/diagnostic/real")
 async def real_diagnostic(
-    naf_code:     str   = Form("NAF_BUREAUX"),
-    country_code: str   = Form("DEFAULT"),
-    surface_m2:   float = Form(0.0),
+    naf_code:                str   = Form("NAF_BUREAUX"),
+    country_code:            str   = Form("DEFAULT"),
+    surface_m2:              float = Form(0.0),
+    puissance_souscrite_kva: float = Form(0.0),
     csv_file: UploadFile = File(...),
 ):
     """
@@ -273,6 +278,27 @@ async def real_diagnostic(
         "has_quantified_baseline": True,
     }
 
+    # ── Power subscription optimisation (Quick Win) ────────────────────────
+    # Enedis courbe de charge is in W (active power) → kW after parser.
+    # kVA ≈ kW assumes PF ≈ 1 (conservative; avoids overestimating savings).
+    pic_kva = load_profile.get("peak_kw_absolute", 0.0)
+    # Round recommended power up to nearest 10 kVA with +10% safety margin
+    recommandee_kva = (
+        int(math.ceil(pic_kva * 1.10 / 10) * 10) if pic_kva > 0 else None
+    )
+    power_optimization = None
+    if puissance_souscrite_kva > 0 and pic_kva > 0:
+        sur_capacite = round(puissance_souscrite_kva - pic_kva, 1)
+        economie_eur = round(max(0.0, sur_capacite) * COUT_MOYEN_KVA)
+        power_optimization = {
+            "puissance_souscrite_kva":       puissance_souscrite_kva,
+            "pic_puissance_reelle_kva":       round(pic_kva, 1),
+            "sur_capacite_kva":               round(max(0.0, sur_capacite), 1),
+            "puissance_recommandee_kva":      recommandee_kva,
+            "economie_abonnement_estimee_eur": economie_eur,
+            "is_over_dimensioned":            sur_capacite > 0,
+        }
+
     return {                                                          # noqa: E501 (kept for readability)
         "diagnostic": {
             "theoretical_annual_consumption_kwh": annual_kwh,
@@ -287,6 +313,7 @@ async def real_diagnostic(
             "wasted_tco2e":              wasted_tco2e,
             "grade":                     grade,
             "iso_50001_assessment":      iso_50001_assessment,
+            "power_optimization":        power_optimization,
         }
     }
 

@@ -768,6 +768,60 @@ export default function AuditPdfDocument({
             </View>
           </View>
 
+          {/* ── Quick Win : Optimisation Tarifaire Immédiate ── */}
+          {diag.power_optimization && (
+            <View style={{ marginTop: 12, marginBottom: 4, borderWidth: 1, borderColor: "#b45309", borderStyle: "solid", borderRadius: 8, overflow: "hidden" }}>
+              {/* Header */}
+              <View style={{ backgroundColor: "#78350f", paddingHorizontal: 10, paddingVertical: 5 }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fcd34d", letterSpacing: 1 }}>
+                  ⚡  OPTIMISATION TARIFAIRE IMMÉDIATE — QUICK WIN
+                </Text>
+              </View>
+              {/* Metrics row */}
+              <View style={{ flexDirection: "row", gap: 8, padding: 10 }}>
+                <View style={{ flex: 1, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
+                  <Text style={{ fontSize: 7, color: "#94a3b8", marginBottom: 3 }}>PUISSANCE FACTURÉE</Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#f8fafc" }}>
+                    {diag.power_optimization.puissance_souscrite_kva} <Text style={{ fontSize: 9, color: "#94a3b8" }}>kVA</Text>
+                  </Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
+                  <Text style={{ fontSize: 7, color: "#94a3b8", marginBottom: 3 }}>PIC RÉEL MESURÉ</Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#f8fafc" }}>
+                    {diag.power_optimization.pic_puissance_reelle_kva} <Text style={{ fontSize: 9, color: "#94a3b8" }}>kVA</Text>
+                  </Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
+                  <Text style={{ fontSize: 7, color: "#94a3b8", marginBottom: 3 }}>SUR-DIMENSIONNEMENT</Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: diag.power_optimization.is_over_dimensioned ? "#fbbf24" : "#94a3b8" }}>
+                    {diag.power_optimization.is_over_dimensioned ? `+${diag.power_optimization.sur_capacite_kva}` : "0"} <Text style={{ fontSize: 9, color: "#94a3b8" }}>kVA</Text>
+                  </Text>
+                </View>
+                <View style={{ flex: 1.2, backgroundColor: "#1a2e0a", borderRadius: 6, padding: 8, borderWidth: 1, borderColor: "#4d7c0f", borderStyle: "solid" }}>
+                  <Text style={{ fontSize: 7, color: "#a3e635", marginBottom: 3 }}>ÉCONOMIE ANNUELLE ESTIMÉE</Text>
+                  <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#bef264" }}>
+                    {diag.power_optimization.economie_abonnement_estimee_eur.toLocaleString("fr-FR")} €
+                    <Text style={{ fontSize: 8, color: "#84cc16" }}>/an</Text>
+                  </Text>
+                </View>
+              </View>
+              {/* CTA */}
+              {diag.power_optimization.is_over_dimensioned && (
+                <View style={{ marginHorizontal: 10, marginBottom: 10, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
+                  <Text style={{ fontSize: 8.5, color: "#e2e8f0", lineHeight: 1.5 }}>
+                    <Text style={{ fontFamily: "Helvetica-Bold" }}>Action immédiate : </Text>
+                    Contactez votre fournisseur d&apos;énergie pour abaisser votre contrat à{" "}
+                    <Text style={{ fontFamily: "Helvetica-Bold", color: "#bef264" }}>{diag.power_optimization.puissance_recommandee_kva} kVA</Text>.
+                    L&apos;économie sur la part fixe de votre facture sera instantanée.
+                  </Text>
+                  <Text style={{ fontSize: 7, color: "#475569", marginTop: 4, fontStyle: "italic" }}>
+                    Estimation basée sur un coût moyen réseau de 20 €/kVA/an. kVA ≈ kW (PF = 1, hypothèse conservative).
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* ── §04 ANNEXES TECHNIQUES ── */}
           <View style={S.annexHeader}>
             <Text style={S.annexHeaderText}>ANNEXES TECHNIQUES</Text>

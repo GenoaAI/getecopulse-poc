@@ -79,6 +79,15 @@ export interface AuditResult {
       has_30min_data: boolean;
       has_quantified_baseline: boolean;
     };
+    /** Quick Win — power subscription optimisation (only when puissance_souscrite_kva provided) */
+    power_optimization?: {
+      puissance_souscrite_kva: number;
+      pic_puissance_reelle_kva: number;
+      sur_capacite_kva: number;
+      puissance_recommandee_kva: number;
+      economie_abonnement_estimee_eur: number;
+      is_over_dimensioned: boolean;
+    } | null;
   };
   plausibility_check?: {
     /** Activity / business type found via Google Search */

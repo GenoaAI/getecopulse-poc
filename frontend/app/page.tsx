@@ -1138,6 +1138,69 @@ export default function Home() {
                 </div>
               )}
 
+              {/* ── Quick Win : Optimisation Tarifaire Immédiate ── */}
+              {(() => {
+                const po = (diag as AuditResult["diagnostic"] & { power_optimization?: { puissance_souscrite_kva: number; pic_puissance_reelle_kva: number; sur_capacite_kva: number; puissance_recommandee_kva: number; economie_abonnement_estimee_eur: number; is_over_dimensioned: boolean } | null })?.power_optimization;
+                if (!po) return null;
+                return (
+                  <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-900/10 overflow-hidden">
+                    {/* Header */}
+                    <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="text-xs font-semibold text-amber-300 uppercase tracking-widest">
+                        Optimisation Tarifaire Immédiate — Quick Win
+                      </span>
+                    </div>
+                    {/* Metrics grid */}
+                    <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Puissance facturée</p>
+                        <p className="text-lg font-bold text-white">{po.puissance_souscrite_kva} <span className="text-xs font-normal text-slate-400">kVA</span></p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Pic réel mesuré</p>
+                        <p className="text-lg font-bold text-white">{po.pic_puissance_reelle_kva} <span className="text-xs font-normal text-slate-400">kVA</span></p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Sur-dimensionnement</p>
+                        <p className={`text-lg font-bold ${po.is_over_dimensioned ? "text-amber-400" : "text-slate-400"}`}>
+                          {po.is_over_dimensioned ? `+${po.sur_capacite_kva}` : "0"} <span className="text-xs font-normal text-slate-400">kVA</span>
+                        </p>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1 rounded-xl bg-[#bef264]/10 border border-[#bef264]/30 px-4 py-3 flex flex-col justify-center">
+                        <p className="text-[10px] text-[#bef264]/70 uppercase tracking-wider mb-0.5">Économie annuelle estimée</p>
+                        <p className="text-2xl font-bold text-[#bef264]">
+                          {po.economie_abonnement_estimee_eur.toLocaleString("fr-FR")} €<span className="text-sm font-normal text-[#bef264]/60">/an</span>
+                        </p>
+                      </div>
+                    </div>
+                    {/* CTA */}
+                    {po.is_over_dimensioned && (
+                      <div className="px-5 pb-4">
+                        <div className="rounded-lg bg-slate-800/60 border border-slate-700 px-4 py-3">
+                          <p className="text-sm text-slate-200">
+                            <span className="font-semibold text-white">Action immédiate :</span>{" "}
+                            Contactez votre fournisseur d&apos;énergie pour abaisser votre contrat à{" "}
+                            <span className="font-bold text-[#bef264]">{po.puissance_recommandee_kva} kVA</span>.
+                            L&apos;économie sur la part fixe de votre facture sera instantanée.
+                          </p>
+                          <p className="mt-2 text-[10px] text-slate-600 italic">
+                            Estimation basée sur un coût moyen réseau de 20 €/kVA/an. kVA ≈ kW (facteur de puissance = 1, hypothèse conservative).
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {!po.is_over_dimensioned && (
+                      <div className="px-5 pb-4">
+                        <p className="text-sm text-slate-400">
+                          Votre contrat est correctement dimensionné par rapport à votre pic de consommation réel.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* CTA block — hidden once CSV is uploaded */}
               {!realDiag && !showCsvUpload && (
                 <div className="bg-gradient-to-r from-[#1e293b] to-[#0f172a]

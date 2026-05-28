@@ -35,6 +35,14 @@ interface RealDiagnostic {
     has_30min_data: boolean;
     has_quantified_baseline: boolean;
   };
+  power_optimization?: {
+    puissance_souscrite_kva: number;
+    pic_puissance_reelle_kva: number;
+    sur_capacite_kva: number;
+    puissance_recommandee_kva: number;
+    economie_abonnement_estimee_eur: number;
+    is_over_dimensioned: boolean;
+  } | null;
 }
 
 interface Props {
@@ -51,6 +59,7 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
   const [error, setError]             = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [puissanceSouscrite, setPuissanceSouscrite] = useState<string>("");
   const inputRef                      = useRef<HTMLInputElement>(null);
 
   function handleDrop(e: React.DragEvent) {
@@ -70,6 +79,10 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
     formData.append("naf_code", nafCode);
     if (surfaceM2)   formData.append("surface_m2",   String(surfaceM2));
     if (countryCode) formData.append("country_code", countryCode);
+    const ps = parseFloat(puissanceSouscrite);
+    if (puissanceSouscrite && !isNaN(ps) && ps > 0) {
+      formData.append("puissance_souscrite_kva", String(ps));
+    }
 
     try {
       const res = await fetch(`${API_BASE}/api/diagnostic/real`, {
@@ -150,6 +163,33 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
           </div>
           <ExternalLink className="w-3.5 h-3.5 text-blue-500/50 shrink-0" />
         </button>
+
+        {/* Puissance souscrite — Quick Win input */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-slate-300 mb-1">
+            Puissance souscrite actuelle
+            <span className="ml-1 text-slate-500 font-normal">(optionnel)</span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={puissanceSouscrite}
+              onChange={(e) => setPuissanceSouscrite(e.target.value)}
+              placeholder="ex : 36, 120, 250…"
+              className="w-full pl-3 pr-14 py-2 rounded-lg bg-slate-800 border border-slate-700
+                         text-sm text-white placeholder:text-slate-500
+                         focus:outline-none focus:ring-1 focus:ring-[#bef264]/50 focus:border-[#bef264]/50"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">
+              kVA
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+            Indiquez la puissance de votre abonnement actuel pour vérifier si votre contrat est sur-dimensionné.
+          </p>
+        </div>
 
         {/* Drop zone */}
         <div
