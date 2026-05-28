@@ -1172,8 +1172,8 @@ export default function Home() {
 
                 return (
                   <>
-                    {/* Inline input — shown when CSV is loaded but no value entered yet */}
-                    {realDiag && !po && peak && peak > 0 && (
+                    {/* Inline input — always visible when using client-side calculation */}
+                    {realDiag && !serverPo && peak && peak > 0 && (
                       <div className={`mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
                                       rounded-xl border px-4 py-3 transition-colors
                                       ${inputInvalid
