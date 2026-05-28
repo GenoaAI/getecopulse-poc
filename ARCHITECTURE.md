@@ -63,6 +63,26 @@ Toute constante numérique (prix, ratio physique, paramètre de modèle, seuil s
 - `GET /api/check-purchase` : vérifie d'abord la session directement auprès de Stripe (contourne la race condition webhook/redirect), puis fallback sur lookup DB.
 - **Restauration post-redirect :** avant la redirection vers Stripe, l'état de l'audit est sérialisé dans `localStorage` (`gep_pending_{hash}`). La page `/success` le transfère vers `gep_restore`. La page principale le restaure au montage.
 
+### Analyse de la Puissance Souscrite — "Quick Win"
+
+Déclenchée lors de l'upload Enedis si `puissance_souscrite_kva` est fourni.
+
+**Calculs (`api/index.py`, post-parsing Linky) :**
+- `pic_puissance_reelle_kva` — valeur max absolue sur l'ensemble des slots mesurés (`peak_kw_absolute` retourné par le parser ; kVA ≈ kW, PF = 1 conservative).
+- `sur_capacite_kva = puissance_souscrite_kva − pic_puissance_reelle_kva`
+- `puissance_recommandee_kva = ceil(pic × 1.10 / 10) × 10` (marge +10 %, arrondi à la dizaine supérieure)
+- `economie_abonnement_estimee_eur = max(0, sur_capacite) × COUT_MOYEN_KVA`
+  - Constante `COUT_MOYEN_KVA = 20 €/kVA/an` (estimation conservative B2B réseau, définie dans `index.py`).
+
+**Réponse JSON :** le bloc `power_optimization` est inclus dans `diagnostic` (ou `null` si `puissance_souscrite_kva = 0`).
+
+**Restitution (frontend + PDF) :**
+- Encart "⚡ Optimisation Tarifaire Immédiate — Quick Win" affiché après le badge "Données réelles actives", uniquement si `power_optimization` est non nul.
+- 4 métriques : puissance facturée / pic réel / sur-dimensionnement / économie annuelle (mise en évidence).
+- CTA actionnable : demande d'abaissement du contrat à `puissance_recommandee_kva` auprès du fournisseur.
+- Section identique générée dans le PDF (`AuditPdfDocument.tsx`), insérée entre le plan d'action et les annexes techniques.
+- Accès **gratuit** (étape 3 du tunnel freemium).
+
 ### Support Automatisé (Human-in-the-loop)
 L'adresse `support@getecopulse.fr` déclenche un webhook Make/n8n → Gemini analyse le contexte → le système injecte un brouillon de réponse dans Gmail Drafts. **Aucun e-mail n'est envoyé sans validation humaine (1 clic).**
 
@@ -83,7 +103,7 @@ Le tunnel utilisateur est **strictement séquentiel**. Le paywall ne peut jamais
 |---|---|---|
 | **1** | Modélisation satellite (empreinte OSM, image, analyse toiture) | 🆓 GRATUIT |
 | **2** | Diagnostic de consommation synthétique (§01 + §02 estimés) | 🆓 GRATUIT |
-| **3** | Analyse de la courbe de charge Enedis réelle (upload CSV → §02 réel, talon de nuit mesuré) | 🆓 GRATUIT |
+| **3** | Analyse de la courbe de charge Enedis réelle (upload CSV → §02 réel, talon de nuit mesuré, Quick Win puissance souscrite) | 🆓 GRATUIT |
 | ⬇ | **— PAYWALL — paiement unique Stripe —** | |
 | **4** | Plan d'action chiffré — Section 03 (scénarios ROI, effacement OPEX) | 💳 PAYANT |
 | **5** | Export du rapport PDF vectoriel complet | 💳 PAYANT |
@@ -132,7 +152,8 @@ L'interface intègre un bouton **"Me localiser"** utilisant l'API native `naviga
 ### Micro-Onboarding B2B — Upload Enedis
 L'interface d'upload de la courbe de charge intègre :
 - Un guide contextuel ("Où trouver ma courbe de charge ?") avec liens directs vers les portails Enedis Pro et Fournisseurs.
-- Un fichier CSV d'exemple téléchargeable (`template_courbe_de_charge.csv`) hébergé dans `/public/` pour réduire la friction à l'adoption.
+- Un fichier CSV d'exemple téléchargeable (`template_enedis.csv`, 91 jours · profil industriel) hébergé dans `/public/` pour réduire la friction à l'adoption.
+- Un champ optionnel **`puissance_souscrite_kva`** (input numérique, suffixe kVA) transmis dans le `FormData` du `POST /api/diagnostic/real`. Déclenche le calcul d'optimisation tarifaire côté backend si renseigné.
 - Une validation préalable du format avant upload (colonnes attendues, encodage, plage de dates).
 
 ---
