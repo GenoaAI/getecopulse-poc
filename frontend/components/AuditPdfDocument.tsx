@@ -770,52 +770,52 @@ export default function AuditPdfDocument({
 
           {/* ── Quick Win : Optimisation Tarifaire Immédiate ── */}
           {diag.power_optimization && (
-            <View style={{ marginTop: 12, marginBottom: 4, borderWidth: 1, borderColor: "#b45309", borderStyle: "solid", borderRadius: 8, overflow: "hidden" }}>
-              {/* Header */}
-              <View style={{ backgroundColor: "#78350f", paddingHorizontal: 10, paddingVertical: 5 }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#fcd34d", letterSpacing: 1 }}>
-                  ⚡  OPTIMISATION TARIFAIRE IMMÉDIATE — QUICK WIN
+            <View style={{ marginTop: 12, marginBottom: 4, borderWidth: 1, borderColor: "#d97706", borderStyle: "solid", borderRadius: 8, overflow: "hidden" }}>
+              {/* Header — light amber, coherent with the PDF light theme */}
+              <View style={{ backgroundColor: "#fffbeb", paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#fcd34d", borderBottomStyle: "solid" }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#92400e", letterSpacing: 1 }}>
+                  OPTIMISATION TARIFAIRE IMMEDIATE — QUICK WIN
                 </Text>
               </View>
               {/* Metrics row */}
-              <View style={{ flexDirection: "row", gap: 8, padding: 10 }}>
-                <View style={{ flex: 1, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
-                  <Text style={{ fontSize: 7, color: "#94a3b8", marginBottom: 3 }}>PUISSANCE FACTURÉE</Text>
-                  <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#f8fafc" }}>
-                    {diag.power_optimization.puissance_souscrite_kva} <Text style={{ fontSize: 9, color: "#94a3b8" }}>kVA</Text>
+              <View style={{ flexDirection: "row", gap: 6, padding: 10, backgroundColor: C.white }}>
+                <View style={{ flex: 1, backgroundColor: C.bgMid, borderRadius: 5, padding: 7 }}>
+                  <Text style={{ fontSize: 7, color: C.t500, marginBottom: 2 }}>PUISSANCE FACTUREE</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: C.t900 }}>
+                    {diag.power_optimization.puissance_souscrite_kva} <Text style={{ fontSize: 8, color: C.t500 }}>kVA</Text>
                   </Text>
                 </View>
-                <View style={{ flex: 1, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
-                  <Text style={{ fontSize: 7, color: "#94a3b8", marginBottom: 3 }}>PIC RÉEL MESURÉ</Text>
-                  <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#f8fafc" }}>
-                    {diag.power_optimization.pic_puissance_reelle_kva} <Text style={{ fontSize: 9, color: "#94a3b8" }}>kVA</Text>
+                <View style={{ flex: 1, backgroundColor: C.bgMid, borderRadius: 5, padding: 7 }}>
+                  <Text style={{ fontSize: 7, color: C.t500, marginBottom: 2 }}>PIC REEL MESURE</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: C.t900 }}>
+                    {diag.power_optimization.pic_puissance_reelle_kva} <Text style={{ fontSize: 8, color: C.t500 }}>kVA</Text>
                   </Text>
                 </View>
-                <View style={{ flex: 1, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
-                  <Text style={{ fontSize: 7, color: "#94a3b8", marginBottom: 3 }}>SUR-DIMENSIONNEMENT</Text>
-                  <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: diag.power_optimization.is_over_dimensioned ? "#fbbf24" : "#94a3b8" }}>
-                    {diag.power_optimization.is_over_dimensioned ? `+${diag.power_optimization.sur_capacite_kva}` : "0"} <Text style={{ fontSize: 9, color: "#94a3b8" }}>kVA</Text>
+                <View style={{ flex: 1, backgroundColor: C.bgMid, borderRadius: 5, padding: 7 }}>
+                  <Text style={{ fontSize: 7, color: C.t500, marginBottom: 2 }}>SUR-DIMENSIONNEMENT</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: diag.power_optimization.is_over_dimensioned ? "#d97706" : C.t500 }}>
+                    {diag.power_optimization.is_over_dimensioned ? `+${diag.power_optimization.sur_capacite_kva}` : "0"} <Text style={{ fontSize: 8, color: C.t500 }}>kVA</Text>
                   </Text>
                 </View>
-                <View style={{ flex: 1.2, backgroundColor: "#1a2e0a", borderRadius: 6, padding: 8, borderWidth: 1, borderColor: "#4d7c0f", borderStyle: "solid" }}>
-                  <Text style={{ fontSize: 7, color: "#a3e635", marginBottom: 3 }}>ÉCONOMIE ANNUELLE ESTIMÉE</Text>
-                  <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: "#bef264" }}>
-                    {diag.power_optimization.economie_abonnement_estimee_eur.toLocaleString("fr-FR")} €
-                    <Text style={{ fontSize: 8, color: "#84cc16" }}>/an</Text>
+                <View style={{ flex: 1.2, backgroundColor: C.greenBg, borderRadius: 5, padding: 7, borderWidth: 1, borderColor: C.greenBdr, borderStyle: "solid" }}>
+                  <Text style={{ fontSize: 7, color: C.green, marginBottom: 2 }}>ECONOMIE ANNUELLE ESTIMEE</Text>
+                  <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold", color: C.green }}>
+                    {diag.power_optimization.economie_abonnement_estimee_eur.toLocaleString("fr-FR")} EUR
+                    <Text style={{ fontSize: 8, color: C.green }}>/an</Text>
                   </Text>
                 </View>
               </View>
               {/* CTA */}
               {diag.power_optimization.is_over_dimensioned && (
-                <View style={{ marginHorizontal: 10, marginBottom: 10, backgroundColor: "#1e293b", borderRadius: 6, padding: 8 }}>
-                  <Text style={{ fontSize: 8.5, color: "#e2e8f0", lineHeight: 1.5 }}>
-                    <Text style={{ fontFamily: "Helvetica-Bold" }}>Action immédiate : </Text>
-                    Contactez votre fournisseur d&apos;énergie pour abaisser votre contrat à{" "}
-                    <Text style={{ fontFamily: "Helvetica-Bold", color: "#bef264" }}>{diag.power_optimization.puissance_recommandee_kva} kVA</Text>.
-                    L&apos;économie sur la part fixe de votre facture sera instantanée.
+                <View style={{ marginHorizontal: 10, marginBottom: 10, backgroundColor: "#fffbeb", borderRadius: 5, padding: 8, borderWidth: 1, borderColor: "#fcd34d", borderStyle: "solid" }}>
+                  <Text style={{ fontSize: 8.5, color: C.t900, lineHeight: 1.5 }}>
+                    <Text style={{ fontFamily: "Helvetica-Bold" }}>Action immediate : </Text>
+                    Contactez votre fournisseur d&apos;energie pour abaisser votre contrat a{" "}
+                    <Text style={{ fontFamily: "Helvetica-Bold", color: "#d97706" }}>{diag.power_optimization.puissance_recommandee_kva} kVA</Text>.
+                    L&apos;economie sur la part fixe de votre facture sera instantanee.
                   </Text>
-                  <Text style={{ fontSize: 7, color: "#475569", marginTop: 4, fontStyle: "italic" }}>
-                    Estimation basée sur un coût moyen réseau de 20 €/kVA/an. kVA ≈ kW (PF = 1, hypothèse conservative).
+                  <Text style={{ fontSize: 7, color: C.t400, marginTop: 4, fontStyle: "italic" }}>
+                    Estimation basee sur un cout moyen reseau de 20 EUR/kVA/an. kVA ≈ kW (PF = 1, hypothese conservative).
                   </Text>
                 </View>
               )}
