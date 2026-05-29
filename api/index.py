@@ -279,43 +279,38 @@ async def real_diagnostic(
     }
 
     # ── Power subscription optimisation (Quick Win) ────────────────────────
-    # Enedis courbe de charge is in W (active power) → kW after parser.
-    # kVA ≈ kW assumes PF ≈ 1 (conservative; avoids overestimating savings).
+    # Security: we only expose a boolean flag in the free response.
+    # The full calculation (amounts, recommendation) is performed client-side
+    # AFTER payment confirmation, using peak_kw_absolute already in load_profile.
+    # kVA ≈ kW assumes PF ≈ 1 (conservative).
     pic_kva = load_profile.get("peak_kw_absolute", 0.0)
-    # Round recommended power up to nearest 10 kVA with +10% safety margin
     recommandee_kva = (
         int(math.ceil(pic_kva * 1.10 / 10) * 10) if pic_kva > 0 else None
     )
-    power_optimization = None
-    if puissance_souscrite_kva > 0 and pic_kva > 0:
-        # sur_capacite and economy are based on recommended (not raw peak)
-        # so the CTA is always coherent: "lower to X kVA" only when X < subscribed
-        sur_capacite = round(max(0.0, puissance_souscrite_kva - (recommandee_kva or 0)), 1)
-        economie_eur = round(sur_capacite * COUT_MOYEN_KVA)
-        power_optimization = {
-            "puissance_souscrite_kva":        puissance_souscrite_kva,
-            "pic_puissance_reelle_kva":        round(pic_kva, 1),
-            "sur_capacite_kva":                sur_capacite,
-            "puissance_recommandee_kva":       recommandee_kva,
-            "economie_abonnement_estimee_eur": economie_eur,
-            "is_over_dimensioned":             puissance_souscrite_kva > (recommandee_kva or 0),
-        }
+    # Detect over-dimensioning (boolean only — no amounts sent to free users)
+    power_optimization_detected = bool(
+        puissance_souscrite_kva > 0
+        and pic_kva > 0
+        and recommandee_kva is not None
+        and puissance_souscrite_kva > recommandee_kva
+    )
 
     return {                                                          # noqa: E501 (kept for readability)
         "diagnostic": {
             "theoretical_annual_consumption_kwh": annual_kwh,
-            "night_talon_pct":           round(real_night_pct, 3),
-            "estimated_waste_kwh":       waste_kwh,
-            "opex_savings_eur_per_year": opex_savings,
-            "opex_capex_eur":            0,
-            "opex_roi":                  "Immédiat",
-            "load_profile":              load_profile,
-            "data_source":               "linky",
-            "days_measured":             load_profile["days_count"],
-            "wasted_tco2e":              wasted_tco2e,
-            "grade":                     grade,
-            "iso_50001_assessment":      iso_50001_assessment,
-            "power_optimization":        power_optimization,
+            "night_talon_pct":              round(real_night_pct, 3),
+            "estimated_waste_kwh":          waste_kwh,
+            "opex_savings_eur_per_year":    opex_savings,
+            "opex_capex_eur":               0,
+            "opex_roi":                     "Immédiat",
+            "load_profile":                 load_profile,
+            "data_source":                  "linky",
+            "days_measured":                load_profile["days_count"],
+            "wasted_tco2e":                 wasted_tco2e,
+            "grade":                        grade,
+            "iso_50001_assessment":         iso_50001_assessment,
+            # Boolean flag only — amounts computed client-side after payment
+            "power_optimization_detected":  power_optimization_detected,
         }
     }
 

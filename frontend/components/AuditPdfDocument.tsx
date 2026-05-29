@@ -20,11 +20,14 @@ import {
   Rect,
   G,
 } from "@react-pdf/renderer";
-import type { AuditResult } from "@/lib/api";
+import type { AuditResult, PowerOpt } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Diag = AuditResult["diagnostic"];
+/** Base diagnostic + client-side power optimisation (injected via diagForPdf after payment) */
+type Diag = AuditResult["diagnostic"] & {
+  power_optimization?: PowerOpt | null;
+};
 
 export interface AuditPdfProps {
   audit: AuditResult;

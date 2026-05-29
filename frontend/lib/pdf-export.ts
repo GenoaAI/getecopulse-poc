@@ -15,13 +15,18 @@
  */
 
 import { createElement } from "react";
-import type { AuditResult } from "@/lib/api";
+import type { AuditResult, PowerOpt } from "@/lib/api";
+
+/** Extended diagnostic type: base fields + client-side power optimisation (paid tier) */
+export type DiagWithPowerOpt = AuditResult["diagnostic"] & {
+  power_optimization?: PowerOpt | null;
+};
 
 // ── Main export function ──────────────────────────────────────────────────────
 
 export async function exportAuditPdf(
   audit:      AuditResult,
-  diag:       AuditResult["diagnostic"],
+  diag:       DiagWithPowerOpt,
   nafCode:    string,
   isRealData: boolean,
 ): Promise<void> {

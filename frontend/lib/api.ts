@@ -8,6 +8,16 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 // Types
 // ---------------------------------------------------------------------------
 
+/** Power subscription optimisation — computed client-side after payment */
+export interface PowerOpt {
+  puissance_souscrite_kva:          number;
+  pic_puissance_reelle_kva:         number;
+  sur_capacite_kva:                 number;
+  puissance_recommandee_kva:        number;
+  economie_abonnement_estimee_eur:  number;
+  is_over_dimensioned:              boolean;
+}
+
 export interface AuditResult {
   generated_at: string;
   address: string;
@@ -81,15 +91,12 @@ export interface AuditResult {
       has_30min_data: boolean;
       has_quantified_baseline: boolean;
     };
-    /** Quick Win — power subscription optimisation (only when puissance_souscrite_kva provided) */
-    power_optimization?: {
-      puissance_souscrite_kva: number;
-      pic_puissance_reelle_kva: number;
-      sur_capacite_kva: number;
-      puissance_recommandee_kva: number;
-      economie_abonnement_estimee_eur: number;
-      is_over_dimensioned: boolean;
-    } | null;
+    /**
+     * Boolean flag from the backend: true when the subscribed power was provided
+     * AND is over-dimensioned vs the measured peak.
+     * Amounts are computed client-side AFTER payment (security).
+     */
+    power_optimization_detected?: boolean;
   };
   plausibility_check?: {
     /** Activity / business type found via Google Search */
