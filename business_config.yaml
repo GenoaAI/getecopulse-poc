@@ -6,6 +6,9 @@ solar_physics:
 financials:
   default_energy_price_kwh: 0.18  # EUR/kWh (French industrial tariff)
   capex_per_kwp_industrial: 900   # EUR/kWp all-in (supply + install)
+  cout_moyen_kva_eur: 20          # €/kVA/an — abonnement B2B réseau (conservative)
+  power_margin_safety_pct: 0.10   # safety margin above measured peak (+10 %)
+  power_round_kva: 10             # round recommended power to nearest N kVA
 
 emission_factors:                 # kgCO2/kWh — IEA 2023 electricity emission factors
   FR: 0.052                       # nuclear-heavy grid
@@ -78,6 +81,12 @@ overpass:
   zoom_min: 16
   zoom_max: 18
   site_area_threshold_m2: 15000   # above this, Nominatim parcel -> Overpass buildings sum
+  max_bbox_diag_m: 1500       # above this, Nominatim result is likely an admin/postal polygon
+  min_building_area_m2: 150   # ignore sheds/gatehouses below this area for zoom calculation
+
+climate_fallbacks:            # used when Open-Meteo API is unavailable
+  dni_annual_kwh_m2: 1150.0  # France national average solar irradiance
+  temperature_mean_c: 12.5   # France annual mean temperature
 
 thermal:
   base_loss_by_roof_type:
