@@ -1084,7 +1084,7 @@ export default function Home() {
                     Col 1   = Optimisation Abonnement (toujours accessible)
                     Col 2+3 = grille verrouillée (Talon + Solaire)
                 ═══════════════════════════════════════════════════════ */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch mt-4">
 
                   {/* ── Cols 2+3 : Leviers verrouillés ── */}
                   <div className="md:col-span-2 relative">
@@ -1095,16 +1095,15 @@ export default function Home() {
                           Mode verrouillé  : SolutionCard standard (blur appliqué au wrapper)
                           Mode déverrouillé : card étendue 2 niveaux (Checklist + IoT CTA)  */}
                       {isPurchased ? (
-                        <div className="bg-[#1e293b] border-2 border-[#bef264]/25 rounded-2xl flex flex-col h-full">
+                        <div className="relative bg-[#1e293b] border-2 border-[#bef264]/25 rounded-2xl flex flex-col h-full">
 
-                          {/* Badge + header */}
-                          <div className="px-4 pt-4 pb-1">
-                            <span className="text-[10px] font-bold bg-[#bef264] text-slate-900
-                                             px-2 py-0.5 rounded uppercase tracking-wider">
-                              PRIORITAIRE
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2.5 px-4 pt-2 pb-3">
+                          {/* Badge — absolu, aligné avec les autres cartes */}
+                          <span className="absolute -top-2.5 left-4 text-[10px] font-bold bg-[#bef264] text-slate-900
+                                           px-2 py-0.5 rounded uppercase tracking-wider z-10">
+                            PRIORITAIRE
+                          </span>
+
+                          <div className="flex items-center gap-2.5 px-4 pt-5 pb-3">
                             <div className="p-2 rounded-lg bg-[#bef264]/10 shrink-0">
                               <Moon className="w-4 h-4 text-[#bef264]" />
                             </div>
