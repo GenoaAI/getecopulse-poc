@@ -56,7 +56,7 @@ Toute constante numérique (prix, ratio physique, paramètre de modèle, seuil s
      - Si le polygone est > `site_area_threshold_m2` (15 000 m²) : `_maybe_refine_with_buildings` tente d'affiner avec les bâtiments Overpass à l'intérieur du site.
      - Si la diagonale du bbox > 1 500 m (polygone admin/postal) : la recherche Overpass est restreinte à un rayon de 750 m autour du point géocodé, sans filtre de containment. Si aucun bâtiment n'est trouvé, le résultat Nominatim est **rejeté** (retour `None`) pour passer au niveau suivant.
    - **Overpass point-based** : query `way["building"]` dans un rayon configurable autour du centroïde ; sélectionne le bâtiment qui contient le point, sinon le plus grand.
-   - **Fallback** : point géocodé seul, `area_m2 = null`, zoom 20.
+   - **Fallback** : point géocodé seul, `area_m2 = null`, zoom `ov.zoom_max` (18 par défaut, configurable dans `business_config.yaml`). ⚠️ Ne jamais hardcoder 20 ici — Mapbox n'a pas de tuiles qualité > z18 en zone rurale française.
 3. Image satellite Mapbox @2x (zoom calculé sur le bâtiment le plus proche ≥ 150 m², cap à 18)
 4. Données climatiques Open-Meteo + Vision IA Gemini (parallèles)
 5. Vérification de plausibilité Gemini + Search grounding
@@ -92,12 +92,12 @@ Deux chemins déclenchent ce calcul (le résultat est identique) :
 - `effectivePo` est calculé au niveau du composant (`serverPo ?? client-computed`).
 - `diagForPdf = { ...diag, power_optimization: effectivePo }` fusionne la valeur effective avant l'appel `exportAuditPdf()`, garantissant que le PDF reçoit toujours la valeur correcte quel que soit le chemin utilisé.
 
-**Restitution (frontend + PDF) :**
-- Encart "Optimisation Tarifaire Immédiate — Quick Win" affiché après le badge "Données réelles actives", uniquement si `power_optimization` est non nul.
-- 4 métriques : puissance facturée / pic réel / sur-dimensionnement / économie annuelle.
-- CTA actionnable : demande d'abaissement du contrat à `puissance_recommandee_kva` auprès du fournisseur.
-- Section identique dans le PDF (`AuditPdfDocument.tsx`), insérée entre le plan d'action et les annexes techniques, stylée dans le thème clair du PDF (fond ambre-50, métriques sur fond gris clair).
-- Accès **gratuit** (étape 3 du tunnel freemium).
+**Restitution (frontend) — Carte §03, col 1 :**
+- La carte "Optimisation Abonnement" est la **1ʳᵉ colonne** de §03, toujours accessible (jamais dans le wrapper blur), quel que soit le statut de paiement.
+- **Tier gratuit** : le signal de détection (`power_optimization_detected: bool`) est visible — la carte affiche la saisie kVA, le signal "Sur-dimensionnement détecté" et un CTA "Débloquer le calcul". Les montants (€/an, kVA cible) sont masqués (`blur-sm`).
+- **Tier payant** (`isPurchased = true`) : les montants réels sont affichés. Un bloc "Courrier clé en main" apparaît en pleine largeur sous la grille, avec le template à copier-coller.
+- `effectivePo` est calculé **uniquement côté client et uniquement si `isPurchased`** — le serveur ne transmet jamais les montants, seulement `power_optimization_detected`.
+- Section identique dans le PDF (`AuditPdfDocument.tsx`), insérée entre le plan d'action et les annexes techniques, stylée dans le thème clair (fond ambre-50). Le PDF n'est accessible qu'aux utilisateurs payants.
 
 ### Support Automatisé (Human-in-the-loop)
 L'adresse `support@getecopulse.fr` déclenche un webhook Make/n8n → Gemini analyse le contexte → le système injecte un brouillon de réponse dans Gmail Drafts. **Aucun e-mail n'est envoyé sans validation humaine (1 clic).**
@@ -119,7 +119,7 @@ Le tunnel utilisateur est **strictement séquentiel**. Le paywall ne peut jamais
 |---|---|---|
 | **1** | Modélisation satellite (empreinte OSM, image, analyse toiture) | 🆓 GRATUIT |
 | **2** | Diagnostic de consommation synthétique (§01 + §02 estimés) | 🆓 GRATUIT |
-| **3** | Analyse de la courbe de charge Enedis réelle (upload CSV → §02 réel, talon de nuit mesuré, Quick Win puissance souscrite) | 🆓 GRATUIT |
+| **3** | Analyse de la courbe de charge Enedis réelle (upload CSV → §02 réel, talon de nuit mesuré, signal de sur-dimensionnement puissance souscrite) | 🆓 GRATUIT |
 | ⬇ | **— PAYWALL — paiement unique Stripe —** | |
 | **4** | Plan d'action chiffré — Section 03 (scénarios ROI, effacement OPEX) | 💳 PAYANT |
 | **5** | Export du rapport PDF vectoriel complet | 💳 PAYANT |
