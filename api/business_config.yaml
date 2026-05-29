@@ -6,6 +6,9 @@ solar_physics:
 financials:
   default_energy_price_kwh: 0.18  # EUR/kWh (French industrial tariff)
   capex_per_kwp_industrial: 900   # EUR/kWp all-in (supply + install)
+  cout_moyen_kva_eur: 20          # €/kVA/an — abonnement B2B réseau (conservative)
+  power_margin_safety_pct: 0.10   # safety margin above measured peak (+10 %)
+  power_round_kva: 10             # round recommended power to nearest N kVA
 
 emission_factors:                 # kgCO2/kWh — IEA 2023 electricity emission factors
   FR: 0.052                       # nuclear-heavy grid

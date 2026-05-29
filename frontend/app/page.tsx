@@ -448,23 +448,29 @@ export default function Home() {
   const psFloat  = parseFloat(puissanceSouscritePage);
   const inputInvalid = psFloat > 0 && peakKw !== null && peakKw > 0 && psFloat < peakKw;
 
+  // Business constants from backend config — never hardcoded here
+  const _pCfg       = realDiag?.power_config;
+  const COUT_KVA    = _pCfg?.cout_moyen_kva_eur      ?? 20;
+  const MARGIN_PCT  = _pCfg?.power_margin_safety_pct ?? 0.10;
+  const ROUND_KVA   = _pCfg?.power_round_kva         ?? 10;
+
   // wouldDetect: over-dimensioning would be found — boolean only, no amounts exposed
   const wouldDetect: boolean = powerOptDetected || (
     peakKw !== null && peakKw > 0 && psFloat > 0 && psFloat >= peakKw &&
-    psFloat > Math.ceil(peakKw * 1.10 / 10) * 10
+    psFloat > Math.ceil(peakKw * (1 + MARGIN_PCT) / ROUND_KVA) * ROUND_KVA
   );
 
   // effectivePo: full calculation — computed ONLY when paid (never in free tier)
   const effectivePo: PowerOpt | null = isPurchased ? (() => {
     if (!peakKw || peakKw <= 0 || !(psFloat >= peakKw)) return null;
-    const recommandee = Math.ceil(peakKw * 1.10 / 10) * 10;
+    const recommandee = Math.ceil(peakKw * (1 + MARGIN_PCT) / ROUND_KVA) * ROUND_KVA;
     const surCapacite = Math.round(Math.max(0, psFloat - recommandee) * 10) / 10;
     return {
       puissance_souscrite_kva:          psFloat,
       pic_puissance_reelle_kva:          Math.round(peakKw * 10) / 10,
       sur_capacite_kva:                  surCapacite,
       puissance_recommandee_kva:         recommandee,
-      economie_abonnement_estimee_eur:   Math.round(surCapacite * 20),
+      economie_abonnement_estimee_eur:   Math.round(surCapacite * COUT_KVA),
       is_over_dimensioned:               psFloat > recommandee,
     };
   })() : null;

@@ -20,6 +20,9 @@ class SolarPhysicsConfig(BaseModel):
 class FinancialsConfig(BaseModel):
     default_energy_price_kwh: float
     capex_per_kwp_industrial: float
+    cout_moyen_kva_eur: float        # €/kVA/an — abonnement B2B réseau
+    power_margin_safety_pct: float   # safety margin above measured peak
+    power_round_kva: int             # round recommended power to nearest N kVA
 
 
 class EnergyProfileConfig(BaseModel):

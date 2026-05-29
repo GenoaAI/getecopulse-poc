@@ -97,6 +97,16 @@ export interface AuditResult {
      * Amounts are computed client-side AFTER payment (security).
      */
     power_optimization_detected?: boolean;
+    /**
+     * Business constants forwarded from business_config.yaml.
+     * The client uses these for the client-side effectivePo computation
+     * so no value is ever hardcoded in the frontend.
+     */
+    power_config?: {
+      cout_moyen_kva_eur:      number;
+      power_margin_safety_pct: number;
+      power_round_kva:         number;
+    };
   };
   plausibility_check?: {
     /** Activity / business type found via Google Search */

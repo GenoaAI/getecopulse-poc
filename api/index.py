@@ -208,9 +208,6 @@ async def audit_building(payload: AuditRequest):
     )
 
 
-COUT_MOYEN_KVA = 20.0  # €/kVA/an — estimation conservative B2B réseau
-
-
 @app.post("/api/diagnostic/real")
 async def real_diagnostic(
     naf_code:                str   = Form("NAF_BUREAUX"),
@@ -283,9 +280,12 @@ async def real_diagnostic(
     # The full calculation (amounts, recommendation) is performed client-side
     # AFTER payment confirmation, using peak_kw_absolute already in load_profile.
     # kVA ≈ kW assumes PF ≈ 1 (conservative).
+    fin     = settings.financials
+    margin  = 1 + fin.power_margin_safety_pct
+    rnd_kva = fin.power_round_kva
     pic_kva = load_profile.get("peak_kw_absolute", 0.0)
     recommandee_kva = (
-        int(math.ceil(pic_kva * 1.10 / 10) * 10) if pic_kva > 0 else None
+        int(math.ceil(pic_kva * margin / rnd_kva) * rnd_kva) if pic_kva > 0 else None
     )
     # Detect over-dimensioning (boolean only — no amounts sent to free users)
     power_optimization_detected = bool(
@@ -311,6 +311,12 @@ async def real_diagnostic(
             "iso_50001_assessment":         iso_50001_assessment,
             # Boolean flag only — amounts computed client-side after payment
             "power_optimization_detected":  power_optimization_detected,
+            # Config constants forwarded so the client never hardcodes them
+            "power_config": {
+                "cout_moyen_kva_eur":       fin.cout_moyen_kva_eur,
+                "power_margin_safety_pct":  fin.power_margin_safety_pct,
+                "power_round_kva":          fin.power_round_kva,
+            },
         }
     }
 
