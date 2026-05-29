@@ -788,39 +788,58 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Vision red flags — solar blockers */}
-                  {(phys.roof_analysis.roof_fragmentation_warning ||
-                    phys.roof_analysis.heritage_abf_risk ||
-                    phys.roof_analysis.suspected_asbestos_risk) && (
-                    <div className="mt-4 pt-3 border-t border-slate-700/60">
-                      <p className="text-[10px] text-amber-400/80 uppercase tracking-widest mb-2">
-                        ⚠ Points de vigilance solaire
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {phys.roof_analysis.roof_fragmentation_warning && (
-                          <span className="flex items-center gap-1.5 text-[11px] bg-amber-900/25 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg">
-                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                            Toiture morcelée / encombrée (&gt;30&nbsp;%)
-                          </span>
-                        )}
-                        {phys.roof_analysis.heritage_abf_risk && (
-                          <span className="flex items-center gap-1.5 text-[11px] bg-amber-900/25 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg">
-                            <AlertTriangle className="w-3 h-3 shrink-0" />
-                            Zone ABF probable — contraintes architecturales
-                          </span>
-                        )}
-                        {phys.roof_analysis.suspected_asbestos_risk && (
-                          <span className="flex items-center gap-1.5 text-[11px] bg-red-900/25 border border-red-500/40 text-red-300 px-2.5 py-1 rounded-lg">
-                            <AlertCircle className="w-3 h-3 shrink-0" />
-                            Matériau suspect — fibrociment (amiante possible)
-                          </span>
-                        )}
-                      </div>
+                  {/* Vision red flags — toujours visibles, vert si ok / amber-rouge si risque */}
+                  <div className="mt-4 pt-3 border-t border-slate-700/60">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">
+                      Vigilance solaire
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Flag 1 — fragmentation */}
+                      {phys.roof_analysis.roof_fragmentation_warning ? (
+                        <span className="flex items-center gap-1.5 text-[11px] bg-amber-900/25 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          Toiture morcelée &gt;30&nbsp;%
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] bg-emerald-900/20 border border-emerald-700/30 text-emerald-500 px-2.5 py-1 rounded-lg">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          Toiture dégagée
+                        </span>
+                      )}
+                      {/* Flag 2 — ABF */}
+                      {phys.roof_analysis.heritage_abf_risk ? (
+                        <span className="flex items-center gap-1.5 text-[11px] bg-amber-900/25 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          Zone ABF probable
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] bg-emerald-900/20 border border-emerald-700/30 text-emerald-500 px-2.5 py-1 rounded-lg">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          Zone standard
+                        </span>
+                      )}
+                      {/* Flag 3 — amiante */}
+                      {phys.roof_analysis.suspected_asbestos_risk ? (
+                        <span className="flex items-center gap-1.5 text-[11px] bg-red-900/25 border border-red-500/40 text-red-300 px-2.5 py-1 rounded-lg">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          Fibrociment suspect
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-[11px] bg-emerald-900/20 border border-emerald-700/30 text-emerald-500 px-2.5 py-1 rounded-lg">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          Matériau récent
+                        </span>
+                      )}
+                    </div>
+                    {/* Note explicative — visible seulement si au moins un risque */}
+                    {(phys.roof_analysis.roof_fragmentation_warning ||
+                      phys.roof_analysis.heritage_abf_risk ||
+                      phys.roof_analysis.suspected_asbestos_risk) && (
                       <p className="text-[10px] text-slate-500 mt-2">
                         Ces alertes n&apos;invalident pas le projet solaire — vérification terrain recommandée avant devis.
                       </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Plausibility check card */}
