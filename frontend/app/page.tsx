@@ -1176,7 +1176,7 @@ export default function Home() {
                     {/* Header */}
                     <div className="flex items-center gap-3 p-5 pb-3">
                       <div className={`p-2 rounded-lg shrink-0
-                                       ${effectivePo ? "bg-amber-500/15" : "bg-amber-500/8"}`}>
+                                       ${effectivePo ? "bg-amber-500/15" : "bg-amber-500/10"}`}>
                         <Zap className={`w-5 h-5
                                          ${effectivePo ? "text-amber-300"
                                            : wouldDetect ? "text-amber-400"
