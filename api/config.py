@@ -40,6 +40,13 @@ class OverpassConfig(BaseModel):
     zoom_min: int
     zoom_max: int
     site_area_threshold_m2: int
+    max_bbox_diag_m: float        # admin/postal polygon detection threshold
+    min_building_area_m2: float   # ignore buildings below this for zoom
+
+
+class ClimateFallbacksConfig(BaseModel):
+    dni_annual_kwh_m2: float   # France fallback when Open-Meteo unavailable
+    temperature_mean_c: float
 
 
 class ThermalConfig(BaseModel):
@@ -98,6 +105,7 @@ class Settings:
             k: EnergyProfileConfig(**v) for k, v in raw["energy_profiles"].items()
         }
         self.overpass = OverpassConfig(**raw["overpass"])
+        self.climate_fallbacks = ClimateFallbacksConfig(**raw["climate_fallbacks"])
         self.thermal = ThermalConfig(**raw["thermal"])
         # Electricity carbon intensity by country (kgCO2/kWh) — IEA 2023
         self.emission_factors: dict[str, float] = raw.get("emission_factors", {"DEFAULT": 0.400})

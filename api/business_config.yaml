@@ -81,6 +81,12 @@ overpass:
   zoom_min: 16
   zoom_max: 18
   site_area_threshold_m2: 15000   # above this, Nominatim parcel -> Overpass buildings sum
+  max_bbox_diag_m: 1500       # above this, Nominatim result is likely an admin/postal polygon
+  min_building_area_m2: 150   # ignore sheds/gatehouses below this area for zoom calculation
+
+climate_fallbacks:            # used when Open-Meteo API is unavailable
+  dni_annual_kwh_m2: 1150.0  # France national average solar irradiance
+  temperature_mean_c: 12.5   # France annual mean temperature
 
 thermal:
   base_loss_by_roof_type:

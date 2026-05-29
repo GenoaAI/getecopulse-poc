@@ -371,7 +371,7 @@ class BuildingAnalyzer:
         lat_span_m = (bbox["max_lat"] - bbox["min_lat"]) * math.radians(1) * _EARTH_RADIUS_M
         lon_span_m = (bbox["max_lon"] - bbox["min_lon"]) * math.radians(1) * _EARTH_RADIUS_M * math.cos(math.radians(c_lat))
         bbox_diag_m = math.hypot(lat_span_m, lon_span_m)
-        MAX_DIAG_M  = 1500.0
+        MAX_DIAG_M  = ov.max_bbox_diag_m
 
         if bbox_diag_m > MAX_DIAG_M:
             # Restrict the search to a tight box (MAX_DIAG_M/2 radius) around the
@@ -422,8 +422,8 @@ class BuildingAnalyzer:
             lons = [n[1] for n in b["nodes_latlon"]]
             return sum(lats) / len(lats), sum(lons) / len(lons)
 
-        # Target significant buildings (>= 150 m²) to prevent centering/zooming on tiny sheds or gatehouses.
-        significant_buildings = [b for b in buildings if b["area_m2"] >= 150.0]
+        # Target significant buildings (>= min_building_area_m2) to prevent centering/zooming on tiny sheds.
+        significant_buildings = [b for b in buildings if b["area_m2"] >= ov.min_building_area_m2]
         target_pool = significant_buildings if significant_buildings else buildings
         nearest = min(target_pool, key=lambda b: _point_distance(ref_lat, ref_lon, *_bld_centroid(b)))
         n_lats  = [n[0] for n in nearest["nodes_latlon"]]
@@ -746,11 +746,12 @@ class BuildingAnalyzer:
             }
         except Exception as exc:
             print(f"    [WARN] Climate API failed: {exc} — using default national averages.")
-            # Default fallback values for France
+            # Default fallback values — configurable in business_config.yaml
+            cf = settings.climate_fallbacks
             result = {
                 "year": end_year,
-                "dni_annual_kwh_m2": 1150.0,
-                "temperature_mean_c": 12.5,
+                "dni_annual_kwh_m2": cf.dni_annual_kwh_m2,
+                "temperature_mean_c": cf.temperature_mean_c,
             }
         print(f"    -> DNI: {result['dni_annual_kwh_m2']} kWh/m2/yr  |  T mean: {result['temperature_mean_c']} C")
         return result
