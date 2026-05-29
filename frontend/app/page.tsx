@@ -1037,12 +1037,12 @@ export default function Home() {
               <>
                 {/* ═══════════════════════════════════════════════════════
                     Quadrant 3-colonnes :
-                    Col 1+2 = grille verrouillée (Talon + Solaire)
-                    Col 3   = Optimisation Abonnement (toujours accessible)
+                    Col 1   = Optimisation Abonnement (toujours accessible)
+                    Col 2+3 = grille verrouillée (Talon + Solaire)
                 ═══════════════════════════════════════════════════════ */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
 
-                  {/* ── Cols 1+2 : Leviers verrouillés ── */}
+                  {/* ── Cols 2+3 : Leviers verrouillés ── */}
                   <div className="md:col-span-2 relative">
                     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 h-full transition-all duration-300
                                      ${!isPurchased ? "blur-sm pointer-events-none select-none" : ""}`}>
@@ -1147,10 +1147,10 @@ export default function Home() {
                     )}
                   </div>
 
-                  {/* ── Col 3 : Optimisation Abonnement ── */}
+                  {/* ── Col 1 : Optimisation Abonnement ── */}
                   {/* Toujours accessible — jamais dans le bloc blur.  */}
-                  {/* Contient la saisie kVA + métriques conditionnelles. */}
-                  <div className={`relative bg-[#1e293b] rounded-2xl border flex flex-col transition-colors
+                  {/* order-first → placé visuellement en 1ère colonne quel que soit le DOM. */}
+                  <div className={`order-first relative bg-[#1e293b] rounded-2xl border flex flex-col transition-colors
                                    ${inputInvalid
                                      ? "border-red-500/30"
                                      : effectivePo
