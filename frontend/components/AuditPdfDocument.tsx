@@ -818,7 +818,7 @@ export default function AuditPdfDocument({
                     L&apos;economie sur la part fixe de votre facture sera instantanee.
                   </Text>
                   <Text style={{ fontSize: 7, color: C.t400, marginTop: 4, fontStyle: "italic" }}>
-                    Estimation basee sur un cout moyen reseau de 20 EUR/kVA/an. kVA ≈ kW (PF = 1, hypothese conservative).
+                    Estimation basee sur un cout moyen reseau de {diag.power_config?.cout_moyen_kva_eur ?? 20} EUR/kVA/an. kVA ≈ kW (PF = 1, hypothese conservative).
                   </Text>
                 </View>
               )}
