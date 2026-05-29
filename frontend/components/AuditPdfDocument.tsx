@@ -825,6 +825,103 @@ export default function AuditPdfDocument({
             </View>
           )}
 
+          {/* ── Plan d'action Talon de Nuit ── */}
+          <View style={{ marginTop: 14, marginBottom: 4 }}>
+
+            {/* Title bar */}
+            <View style={{
+              backgroundColor: C.navy, borderRadius: 5,
+              paddingHorizontal: 10, paddingVertical: 6, marginBottom: 9,
+            }}>
+              <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.lime, letterSpacing: 0.5 }}>
+                PLAN D&apos;ACTION : ECRASER VOTRE TALON DE CONSOMMATION
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+
+              {/* Bloc 1 — Checklist (Niveau 1) */}
+              <View style={{
+                flex: 1.3,
+                backgroundColor: C.bg, borderRadius: 7,
+                borderWidth: 1, borderColor: C.border, borderStyle: "solid",
+                padding: 10,
+              }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.t900, marginBottom: 2 }}>
+                  Niveau 1 — La tournee de fermeture (15 min)
+                </Text>
+                <Text style={{ fontSize: 7, color: C.t400, marginBottom: 8, fontStyle: "italic" }}>
+                  A faire chaque soir / chaque vendredi
+                </Text>
+
+                {[
+                  {
+                    title: "Air comprime",
+                    text:  "Le soir, ecoutez le silence. Un sifflement = une fuite couteuse. Action : coupez electricement le compresseur la nuit.",
+                  },
+                  {
+                    title: "Chauffage / Climatisation",
+                    text:  "Action : baissez le thermostat de 3 degres le vendredi soir (1 degre en moins = 7% d'economie).",
+                  },
+                  {
+                    title: "Machines",
+                    text:  "Action : coupez l'alimentation au tableau electrique (disjoncteur) pour tuer les modes veille.",
+                  },
+                ].map((item, idx) => (
+                  <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: idx < 2 ? 8 : 0 }}>
+                    {/* Checkbox vide — a cocher a la main sur le PDF imprime */}
+                    <View style={{ marginTop: 1.5, marginRight: 7, flexShrink: 0 }}>
+                      <Svg width={9} height={9}>
+                        <Rect x={0} y={0} width={9} height={9} stroke={C.t400} strokeWidth={1} fill="none" />
+                      </Svg>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.t900, marginBottom: 2 }}>
+                        {item.title}
+                      </Text>
+                      <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.45 }}>
+                        {item.text}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* Bloc 2 — IoT (Niveau 2) */}
+              <View style={{
+                flex: 1,
+                backgroundColor: C.bgMid, borderRadius: 7,
+                borderWidth: 1, borderColor: C.border, borderStyle: "solid",
+                padding: 10,
+              }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.t900, marginBottom: 5 }}>
+                  Niveau 2 — Le sous-comptage intelligent
+                </Text>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.t700, marginBottom: 5 }}>
+                  Passez au rayon X avec la mesure connectee (IoT)
+                </Text>
+                <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.5, marginBottom: 8 }}>
+                  Si les actions manuelles ne suffisent pas, il faut mesurer. L&apos;installation de pinces amperemetriques connectees sur vos departs electriques permet d&apos;identifier quelle machine exacte consomme la nuit, sans tirer de cables.
+                </Text>
+
+                {/* CTA encadre */}
+                <View style={{
+                  backgroundColor: C.white, borderRadius: 5, padding: 8,
+                  borderWidth: 1, borderColor: C.greenBdr, borderStyle: "solid",
+                  borderLeftWidth: 3, borderLeftColor: C.green, borderLeftStyle: "solid",
+                }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.green, marginBottom: 3 }}>
+                    Demande d&apos;etude partenaire IoT (gratuit)
+                  </Text>
+                  <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.4 }}>
+                    Connectez-vous sur getecopulse.com pour demander une mise en relation avec nos partenaires integrateurs.
+                  </Text>
+                </View>
+              </View>
+
+            </View>
+          </View>
+
           {/* ── §04 ANNEXES TECHNIQUES ── */}
           <View style={S.annexHeader}>
             <Text style={S.annexHeaderText}>ANNEXES TECHNIQUES</Text>

@@ -25,6 +25,7 @@ import {
   FileDown,
   LocateFixed,
   Copy,
+  Wifi,
 } from "lucide-react";
 import {
   runAudit, fetchFootprint, type AuditResult, type PowerOpt,
@@ -268,6 +269,9 @@ export default function Home() {
 
   // Quick Win — puissance souscrite saisie après upload CSV
   const [puissanceSouscritePage, setPuissanceSouscritePage] = useState<string>("");
+
+  // Sprint W — IoT lead gen CTA (état local ; Sprint E ajoutera le webhook)
+  const [iotContactRequested, setIotContactRequested] = useState(false);
 
   // Purchase / unlock state
   const [isPurchased,      setIsPurchased]      = useState(false);
@@ -1053,33 +1057,118 @@ export default function Home() {
                     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 h-full transition-all duration-300
                                      ${!isPurchased ? "blur-sm pointer-events-none select-none" : ""}`}>
 
-                      {/* Card 1 — Effacement Talon de Nuit */}
-                      <SolutionCard
-                        variant="primary"
-                        badge="PRIORITAIRE"
-                        icon={Moon}
-                        title="Effacement Talon de Nuit"
-                        description="Actions OPEX — sans investissement lourd"
-                        metrics={[
-                          {
-                            label: "Économie potentielle",
-                            value: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an`,
-                          },
-                          {
-                            label: "Gaspillage ciblé",
-                            value: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an`,
-                          },
-                          {
-                            label: "Talon nocturne",
-                            value: `${Math.round(diag.night_talon_pct * 100)} %`,
-                          },
-                          {
-                            label: "Investissement",
-                            value: `${diag.opex_capex_eur.toLocaleString("fr-FR")} €`,
-                          },
-                        ]}
-                        roi={diag.opex_roi}
-                      />
+                      {/* Card 1 — Effacement Talon de Nuit
+                          Mode verrouillé  : SolutionCard standard (blur appliqué au wrapper)
+                          Mode déverrouillé : card étendue 2 niveaux (Checklist + IoT CTA)  */}
+                      {isPurchased ? (
+                        <div className="bg-[#1e293b] border-2 border-[#bef264]/25 rounded-2xl flex flex-col h-full">
+
+                          {/* Badge + header */}
+                          <div className="px-4 pt-4 pb-1">
+                            <span className="text-[10px] font-bold bg-[#bef264] text-slate-900
+                                             px-2 py-0.5 rounded uppercase tracking-wider">
+                              PRIORITAIRE
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2.5 px-4 pt-2 pb-3">
+                            <div className="p-2 rounded-lg bg-[#bef264]/10 shrink-0">
+                              <Moon className="w-4 h-4 text-[#bef264]" />
+                            </div>
+                            <div>
+                              <h3 className="text-white font-semibold text-sm">Effacement Talon de Nuit</h3>
+                              <p className="text-slate-400 text-xs">Actions OPEX — sans investissement</p>
+                            </div>
+                          </div>
+
+                          {/* Métriques 2×2 */}
+                          <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+                            {[
+                              { lbl: "Économie potentielle", val: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an`, hi: true },
+                              { lbl: "Gaspillage ciblé",     val: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an`,        hi: false },
+                              { lbl: "Talon nocturne",       val: `${Math.round(diag.night_talon_pct * 100)} %`,                   hi: false },
+                              { lbl: "Investissement",       val: "0 €",                                                            hi: true  },
+                            ].map(({ lbl, val, hi }) => (
+                              <div key={lbl} className="bg-[#0f172a] rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-slate-400 mb-0.5 uppercase tracking-wider">{lbl}</p>
+                                <p className={`text-sm font-bold ${hi ? "text-[#bef264]" : "text-white"}`}>{val}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* ── Niveau 1 : checklist immédiate ── */}
+                          <div className="mx-4 mb-3 rounded-xl bg-[#0f172a] border border-[#bef264]/15 p-3">
+                            <p className="text-[10px] font-bold text-[#bef264] uppercase tracking-wider mb-2.5">
+                              Niveau 1 — L&apos;action immédiate (0 € / 15 min)
+                            </p>
+                            <div className="space-y-2.5">
+                              {[
+                                { title: "Air comprimé",      text: "Le soir, écoutez le silence. Un sifflement = une fuite. Coupez le compresseur au disjoncteur." },
+                                { title: "Chauffage / Clim",  text: "Baissez le thermostat de 3°C le vendredi soir. 1°C en moins = 7% d'économie." },
+                                { title: "Machines",          text: "Coupez l'alimentation au tableau électrique pour tuer les modes veille." },
+                              ].map(({ title, text }) => (
+                                <div key={title} className="flex items-start gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#bef264] mt-1.5 shrink-0" />
+                                  <p className="text-xs leading-relaxed text-slate-300">
+                                    <span className="font-semibold text-white">{title}</span>
+                                    {" — "}{text}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* ── Niveau 2 : IoT CTA ── */}
+                          <div className="mx-4 mb-4 rounded-xl bg-slate-800/40 border border-slate-700/50 p-3">
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                              Niveau 2 — Identifier la machine coupable (IoT)
+                            </p>
+                            <p className="text-xs text-slate-400 leading-relaxed mb-2.5">
+                              Votre talon est résistant&nbsp;? Des capteurs sans fil sur vos équipements
+                              identifient les dérives en temps réel, sans câblage complexe.
+                            </p>
+                            {iotContactRequested ? (
+                              <div className="flex items-center gap-2 text-xs text-emerald-400
+                                              bg-emerald-900/15 rounded-lg px-3 py-2 border border-emerald-500/20">
+                                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                                Demande enregistrée — un expert vous contactera sous 48&nbsp;h.
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setIotContactRequested(true)}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+                                           text-xs font-medium text-slate-400 border border-slate-600/60
+                                           hover:border-slate-500 hover:text-slate-200 hover:bg-slate-700/40
+                                           transition-colors"
+                              >
+                                <Wifi className="w-3 h-3 shrink-0" />
+                                Être mis en relation avec un expert IoT (devis gratuit)
+                              </button>
+                            )}
+                          </div>
+
+                          {/* ROI footer */}
+                          <div className="flex items-center gap-2 text-xs text-slate-500
+                                          border-t border-slate-700/50 px-4 py-3 mt-auto">
+                            <CheckCircle className="w-3.5 h-3.5 shrink-0 text-[#bef264]" />
+                            <span>ROI : <span className="font-medium text-[#bef264]">{diag.opex_roi}</span></span>
+                          </div>
+                        </div>
+                      ) : (
+                        <SolutionCard
+                          variant="primary"
+                          badge="PRIORITAIRE"
+                          icon={Moon}
+                          title="Effacement Talon de Nuit"
+                          description="Actions OPEX — sans investissement lourd"
+                          metrics={[
+                            { label: "Économie potentielle", value: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an` },
+                            { label: "Gaspillage ciblé",     value: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an` },
+                            { label: "Talon nocturne",       value: `${Math.round(diag.night_talon_pct * 100)} %` },
+                            { label: "Investissement",       value: `${diag.opex_capex_eur.toLocaleString("fr-FR")} €` },
+                          ]}
+                          roi={diag.opex_roi}
+                        />
+                      )}
 
                       {/* Card 2 — Installation Solaire */}
                       <SolutionCard
