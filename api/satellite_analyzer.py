@@ -68,12 +68,14 @@ def compute_grade(eui_ratio: float) -> str:
     """
     Map EUI ratio (actual_eui / sector_global_median) to GetEcoPulse grade A–F.
     Ratio < 1 means the building is more efficient than the global median.
+    Thresholds are read from settings.grade_thresholds (business_config.yaml).
     """
-    if eui_ratio < 0.70: return "A"
-    if eui_ratio < 0.90: return "B"
-    if eui_ratio < 1.10: return "C"
-    if eui_ratio < 1.40: return "D"
-    if eui_ratio < 2.00: return "E"
+    g = settings.grade_thresholds
+    if eui_ratio < g.A: return "A"
+    if eui_ratio < g.B: return "B"
+    if eui_ratio < g.C: return "C"
+    if eui_ratio < g.D: return "D"
+    if eui_ratio < g.E: return "E"
     return "F"
 
 

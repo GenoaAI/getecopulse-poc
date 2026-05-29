@@ -44,6 +44,14 @@ class OverpassConfig(BaseModel):
     min_building_area_m2: float   # ignore buildings below this for zoom
 
 
+class GradeThresholdsConfig(BaseModel):
+    A: float   # EUI ratio upper bound for grade A
+    B: float
+    C: float
+    D: float
+    E: float   # above this → grade F
+
+
 class ClimateFallbacksConfig(BaseModel):
     dni_annual_kwh_m2: float   # France fallback when Open-Meteo unavailable
     temperature_mean_c: float
@@ -105,6 +113,7 @@ class Settings:
             k: EnergyProfileConfig(**v) for k, v in raw["energy_profiles"].items()
         }
         self.overpass = OverpassConfig(**raw["overpass"])
+        self.grade_thresholds = GradeThresholdsConfig(**raw["grade_thresholds"])
         self.climate_fallbacks = ClimateFallbacksConfig(**raw["climate_fallbacks"])
         self.thermal = ThermalConfig(**raw["thermal"])
         # Electricity carbon intensity by country (kgCO2/kWh) — IEA 2023

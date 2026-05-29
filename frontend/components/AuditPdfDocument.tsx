@@ -998,7 +998,7 @@ export default function AuditPdfDocument({
             <AppRow
               label="Marge d'incertitude"
               value={isRealData ? "±5% (precision compteur)" : "±30% (variance sectorielle)"}
-              note={isRealData ? undefined : "Scenario bas x 0.70 / haut x 1.30"}
+              note={isRealData ? undefined : "Variance sectorielle IEA — profil synthetique"}
             />
             <AppRow
               label="Fiabilite surface"

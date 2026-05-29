@@ -84,6 +84,14 @@ overpass:
   max_bbox_diag_m: 1500       # above this, Nominatim result is likely an admin/postal polygon
   min_building_area_m2: 150   # ignore sheds/gatehouses below this area for zoom calculation
 
+grade_thresholds:             # EUI ratio (actual / IEA sector median) → GetEcoPulse grade
+  A: 0.70                     # < 0.70 : Leader sectoriel
+  B: 0.90                     # < 0.90 : Bonne performance
+  C: 1.10                     # < 1.10 : Dans la moyenne
+  D: 1.40                     # < 1.40 : Sous la médiane IEA
+  E: 2.00                     # < 2.00 : Consommation excessive
+                              # else F : Urgence d'action
+
 climate_fallbacks:            # used when Open-Meteo API is unavailable
   dni_annual_kwh_m2: 1150.0  # France national average solar irradiance
   temperature_mean_c: 12.5   # France annual mean temperature
