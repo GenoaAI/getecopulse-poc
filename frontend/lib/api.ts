@@ -44,6 +44,12 @@ export interface AuditResult {
       obstructions: string[];
       confidence: string;
       reasoning: string;
+      /** True if roof is heavily fragmented/obstructed (>30% coverage) */
+      roof_fragmentation_warning: boolean;
+      /** True if surroundings suggest an ABF heritage protection zone */
+      heritage_abf_risk: boolean;
+      /** True if roof texture suggests old fibre-cement (asbestos risk) */
+      suspected_asbestos_risk: boolean;
     };
     solar_potential: {
       usable_surface_m2: number;

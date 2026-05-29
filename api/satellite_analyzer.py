@@ -29,6 +29,28 @@ class RoofAnalysis(BaseModel):
     obstructions: list[str] = Field(description="Visible obstructions: chimneys, HVAC units, skylights, etc.")
     confidence: str = Field(description="Confidence level: high / medium / low")
     reasoning: str = Field(description="Brief explanation of the estimates")
+    # ── Solar red-flags (Sprint W) ──────────────────────────────────────────────
+    roof_fragmentation_warning: bool = Field(
+        default=False,
+        description=(
+            "True if the roof is heavily fragmented or obstructed "
+            "(multiple skylights, chimneys, HVAC units covering >30% of surface)"
+        ),
+    )
+    heritage_abf_risk: bool = Field(
+        default=False,
+        description=(
+            "True if the immediate surroundings show ABF zone markers: "
+            "churches, historic monuments, old town-centre rooflines"
+        ),
+    )
+    suspected_asbestos_risk: bool = Field(
+        default=False,
+        description=(
+            "True if the roof texture/colour suggests old fibre-cement "
+            "(matt grey-green, weathered, streaked) rather than modern steel or membrane"
+        ),
+    )
 
 
 class PlausibilityCheck(BaseModel):
@@ -767,13 +789,25 @@ class BuildingAnalyzer:
         prompt = (
             "Tu es un auditeur énergétique bâtiment spécialisé dans l'analyse de toitures par télédétection. "
             "Tu vas recevoir une image satellite d'une toiture de bâtiment.\n\n"
-            "Ton rôle est d'estimer les éléments suivants à partir de ce qui est visible dans l'image :\n"
+            "Ton rôle est d'estimer les éléments suivants à partir de ce qui est visible dans l'image :\n\n"
+            "── Champs de base ──\n"
             "1. surface_m2 : Surface utile principale de la toiture en mètres carrés (entier ou décimal).\n"
             "2. azimuth_degrees : Orientation principale de la toiture en degrés (0=Nord, 90=Est, 180=Sud, 270=Ouest).\n"
             "3. roof_type : Un parmi [flat, gable, hip, shed, complex, unknown] — garde ces valeurs exactes en anglais.\n"
             "4. obstructions : Liste JSON des obstructions visibles (cheminées, unités CVC, lanterneaux, antennes, etc.) — en français.\n"
             "5. confidence : Ton niveau de confiance global — un parmi [high, medium, low].\n"
             "6. reasoning : Une ou deux phrases expliquant tes estimations — OBLIGATOIREMENT EN FRANÇAIS.\n\n"
+            "── Signaux bloquants solaires (booléens true/false) ──\n"
+            "7. roof_fragmentation_warning : Analyse la surface du bâtiment ciblé. "
+            "Le toit est-il fortement morcelé ou encombré par des lanterneaux, cheminées multiples ou groupes CVC "
+            "couvrant plus de 30 % de la surface ? (true = bloquant, false = surface dégagée ou légèrement obstruée).\n"
+            "8. heritage_abf_risk : Regarde l'environnement immédiat autour du bâtiment. "
+            "Vois-tu des marqueurs d'une zone ABF — église, château, monument historique, toitures de centre ancien "
+            "typiques d'une ville française classée ? (true = risque ABF identifié, false = environnement ordinaire).\n"
+            "9. suspected_asbestos_risk : Tente d'identifier le matériau de couverture. "
+            "La texture et la couleur suggèrent-elles un vieux fibrociment (gris-vert mat, surface altérée, striée) "
+            "plutôt qu'un bac acier ou une membrane moderne (propre, réfléchissant, uniforme) ? "
+            "(true = fibrociment probable, false = matériau moderne ou indéterminé).\n\n"
             "CRITIQUE : Réponds UNIQUEMENT avec un objet JSON valide correspondant au schéma. "
             "Pas de balises markdown, pas de texte hors JSON, pas de commentaires."
         )
@@ -893,6 +927,10 @@ class BuildingAnalyzer:
                     "obstructions":      roof.obstructions,
                     "confidence":        roof.confidence,
                     "reasoning":         roof.reasoning,
+                    # ── Solar red-flags (Sprint W) ──────────────────────────
+                    "roof_fragmentation_warning": roof.roof_fragmentation_warning,
+                    "heritage_abf_risk":          roof.heritage_abf_risk,
+                    "suspected_asbestos_risk":    roof.suspected_asbestos_risk,
                 },
                 "solar_potential": {
                     "usable_surface_m2":    round(usable_surface, 1),
