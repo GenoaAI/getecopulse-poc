@@ -226,7 +226,9 @@ class BuildingAnalyzer:
             "area_m2": None,
             "centroid_lat": lat,
             "centroid_lon": lon,
-            "zoom": 20,
+            # Use zoom_max from config (not a hardcoded 20) so rural/untagged sites
+            # don't get blurry high-zoom Mapbox tiles that have no coverage at z>18.
+            "zoom": ov.zoom_max,
             "bbox": None,
             "polygon_coords": [],
         }
@@ -681,7 +683,7 @@ class BuildingAnalyzer:
     # Step 3 — Satellite image
     # ------------------------------------------------------------------
 
-    def fetch_satellite_image(self, lat: float, lon: float, zoom: int = 20) -> bytes:
+    def fetch_satellite_image(self, lat: float, lon: float, zoom: int = 18) -> bytes:
         """
         Download a satellite image centred on the building and return raw bytes (no disk write).
         Uses Mapbox Static Images API — Google Maps Static is unavailable for EEA accounts.
