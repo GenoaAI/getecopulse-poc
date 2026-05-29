@@ -45,7 +45,7 @@ interface Props {
   nafCode: string;
   surfaceM2?: number;
   countryCode?: string;
-  onResult: (diagnostic: RealDiagnostic) => void;
+  onResult: (diagnostic: RealDiagnostic, puissanceSouscrite?: string) => void;
   onClose: () => void;
 }
 
@@ -90,7 +90,7 @@ export default function CsvUpload({ nafCode, surfaceM2, countryCode, onResult, o
         throw new Error((err as { detail?: string }).detail ?? `Erreur ${res.status}`);
       }
       const data = await res.json() as { diagnostic: RealDiagnostic };
-      onResult(data.diagnostic);
+      onResult(data.diagnostic, puissanceSouscrite || undefined);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {

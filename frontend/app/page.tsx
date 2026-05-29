@@ -1118,6 +1118,68 @@ export default function Home() {
                     ]}
                     roi="À venir"
                   />
+
+                  {/* Card 4 — Optimisation Tarifaire
+                      Placeholder (locked/awaiting input) when effectivePo is not yet computed.
+                      This ensures the 4th lever is always visible in §03 at the same level
+                      as the other 3 cards — both before and after unlocking. */}
+                  {realDiag && wouldDetect && !effectivePo && (
+                    <div className="col-span-full bg-[#1e293b] border border-amber-500/20 rounded-2xl p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-4">
+                        {/* Header */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="p-2 rounded-lg bg-amber-500/10">
+                            <Zap className="w-5 h-5 text-amber-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-semibold text-sm">Optimisation Tarifaire</h3>
+                            <p className="text-slate-400 text-xs">Contrat fournisseur — sans investissement</p>
+                          </div>
+                        </div>
+                        {/* Locked metrics */}
+                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {[
+                            { label: "Sur-dimensionnement",   suffix: "kVA",  accent: false },
+                            { label: "Économie annuelle",     suffix: "€/an", accent: false },
+                            { label: "Puissance recommandée", suffix: "kVA",  accent: false },
+                            { label: "Investissement",        suffix: "€",    accent: true  },
+                          ].map((m) => (
+                            <div key={m.label} className="bg-[#0f172a] rounded-lg px-3 py-2">
+                              <p className="text-xs text-slate-400 mb-0.5">{m.label}</p>
+                              {m.accent ? (
+                                <p className="text-base font-bold text-[#bef264]">0 {m.suffix}</p>
+                              ) : (
+                                <p className="text-base font-bold text-slate-600 flex items-center gap-1">
+                                  <Lock className="w-3 h-3 shrink-0" />
+                                  <span className="select-none">— {m.suffix}</span>
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs border-t border-slate-700 pt-3">
+                        {isPurchased ? (
+                          <>
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400/70 shrink-0" />
+                            <span className="text-amber-300/70">
+                              Renseignez votre puissance souscrite ci-dessous pour calculer votre économie.
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-3.5 h-3.5 text-amber-400/40 shrink-0" />
+                            <span className="text-slate-500">
+                              ROI :{" "}
+                              <span className="font-medium text-amber-400/50">
+                                Immédiat — avenant contractuel uniquement
+                              </span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Quick Win — Optimisation Tarifaire (section payante) ── */}
@@ -1251,8 +1313,12 @@ export default function Home() {
                           Plan d&apos;action complet
                         </p>
                         <p className="text-slate-400 text-xs leading-relaxed">
-                          Chiffres détaillés, scénarios ROI et recommandations
-                          personnalisées pour ce bâtiment.
+                          {realDiag && wouldDetect
+                            ? <>4 leviers d&apos;économies identifiés — dont une{" "}
+                                <span className="text-amber-300/80">optimisation tarifaire immédiate</span>{" "}
+                                sur votre abonnement.</>
+                            : "Chiffres détaillés, scénarios ROI et recommandations personnalisées pour ce bâtiment."
+                          }
                         </p>
                       </div>
                       <button
@@ -1298,8 +1364,8 @@ export default function Home() {
                 </div>
               )}
 
-              {/* ── Bandeau saisie puissance souscrite (section gratuite) ── */}
-              {realDiag && peakKw !== null && peakKw > 0 && !isPurchased && (
+              {/* ── Bandeau saisie puissance souscrite ── */}
+              {realDiag && peakKw !== null && peakKw > 0 && (
                 <div className={`mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
                                 rounded-xl border px-4 py-3 transition-colors
                                 ${inputInvalid
@@ -1333,63 +1399,6 @@ export default function Home() {
                                      : "border-slate-700 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"}`}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">kVA</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Teaser verrouillé — optimisation détectée, montants cachés ── */}
-              {realDiag && wouldDetect && !isPurchased && (
-                <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-900/10 overflow-hidden">
-                  <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="text-xs font-semibold text-amber-300 uppercase tracking-widest flex-1">
-                      Optimisation Tarifaire Détectée
-                    </span>
-                    <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                  </div>
-                  <div className="px-5 py-4">
-                    <p className="text-sm text-slate-300 mb-4 leading-relaxed">
-                      ⚠️ Votre contrat actuel{" "}
-                      <span className="font-semibold text-white">({psFloat} kVA)</span>{" "}
-                      semble sur-dimensionné par rapport à vos besoins réels. Un potentiel
-                      d&apos;économie immédiate sur votre abonnement a été identifié.
-                    </p>
-
-                    {/* Métriques verrouillées */}
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-slate-700">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Puissance facturée</p>
-                        <p className="text-base font-bold text-white">{psFloat} <span className="text-xs font-normal text-slate-400">kVA</span></p>
-                      </div>
-                      <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-slate-700">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Sur-dimensionnement</p>
-                        <p className="text-base font-bold text-slate-600 flex items-center gap-1.5">
-                          <Lock className="w-3 h-3" /><span className="select-none">— kVA</span>
-                        </p>
-                      </div>
-                      <div className="bg-[#0a1628] rounded-xl px-3 py-2.5 border border-[#bef264]/10">
-                        <p className="text-[10px] text-[#bef264]/40 uppercase tracking-wider mb-0.5">Économie annuelle</p>
-                        <p className="text-base font-bold text-slate-600 select-none blur-sm">●●●● €/an</p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3
-                                    bg-[#0f172a] rounded-xl px-4 py-3 border border-slate-700">
-                      <p className="flex-1 text-xs text-slate-400 leading-relaxed">
-                        Débloquez le Plan d&apos;Action complet pour révéler le montant
-                        de l&apos;économie et la démarche à suivre.
-                      </p>
-                      <button
-                        onClick={handlePurchase}
-                        disabled={checkingPurchase || !addressHash}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold
-                                   bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
-                                   disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
-                      >
-                        {checkingPurchase ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                        {checkingPurchase ? "Redirection…" : `Déverrouiller — ${process.env.NEXT_PUBLIC_AUDIT_PRICE ?? "29"} €`}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -1433,8 +1442,11 @@ export default function Home() {
                   nafCode={nafCode}
                   surfaceM2={audit?.physical_data.footprint.area_m2 ?? undefined}
                   countryCode={audit?.country_code ?? "DEFAULT"}
-                  onResult={(d) => {
+                  onResult={(d, ps) => {
                     setRealDiag(d as unknown as AuditResult["diagnostic"]);
+                    // Pre-fill subscribed power from the upload form so the user
+                    // doesn't have to enter it twice in the bandeau.
+                    if (ps && parseFloat(ps) > 0) setPuissanceSouscritePage(ps);
                     setShowCsvUpload(false);
                   }}
                   onClose={() => setShowCsvUpload(false)}
