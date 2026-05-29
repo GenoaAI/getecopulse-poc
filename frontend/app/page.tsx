@@ -787,6 +787,40 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Vision red flags — solar blockers */}
+                  {(phys.roof_analysis.roof_fragmentation_warning ||
+                    phys.roof_analysis.heritage_abf_risk ||
+                    phys.roof_analysis.suspected_asbestos_risk) && (
+                    <div className="mt-4 pt-3 border-t border-slate-700/60">
+                      <p className="text-[10px] text-amber-400/80 uppercase tracking-widest mb-2">
+                        ⚠ Points de vigilance solaire
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {phys.roof_analysis.roof_fragmentation_warning && (
+                          <span className="flex items-center gap-1.5 text-[11px] bg-amber-900/25 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg">
+                            <AlertTriangle className="w-3 h-3 shrink-0" />
+                            Toiture morcelée / encombrée (&gt;30&nbsp;%)
+                          </span>
+                        )}
+                        {phys.roof_analysis.heritage_abf_risk && (
+                          <span className="flex items-center gap-1.5 text-[11px] bg-amber-900/25 border border-amber-500/40 text-amber-300 px-2.5 py-1 rounded-lg">
+                            <AlertTriangle className="w-3 h-3 shrink-0" />
+                            Zone ABF probable — contraintes architecturales
+                          </span>
+                        )}
+                        {phys.roof_analysis.suspected_asbestos_risk && (
+                          <span className="flex items-center gap-1.5 text-[11px] bg-red-900/25 border border-red-500/40 text-red-300 px-2.5 py-1 rounded-lg">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            Matériau suspect — fibrociment (amiante possible)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-2">
+                        Ces alertes n&apos;invalident pas le projet solaire — vérification terrain recommandée avant devis.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Plausibility check card */}

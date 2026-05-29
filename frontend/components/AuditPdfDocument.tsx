@@ -574,6 +574,40 @@ export default function AuditPdfDocument({
             </View>
           )}
 
+          {/* Vision red flags — solar blockers */}
+          {(phys.roof_analysis.roof_fragmentation_warning ||
+            phys.roof_analysis.heritage_abf_risk ||
+            phys.roof_analysis.suspected_asbestos_risk) && (
+            <View style={{
+              marginTop: 6,
+              backgroundColor: "#fffbeb",
+              borderWidth: 1, borderColor: "#fbbf24", borderStyle: "solid",
+              borderRadius: 4, padding: "5 8",
+            }}>
+              <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: "#92400e", marginBottom: 4 }}>
+                {"⚠  POINTS DE VIGILANCE SOLAIRE DÉTECTÉS"}
+              </Text>
+              {phys.roof_analysis.roof_fragmentation_warning && (
+                <Text style={{ fontSize: 7, color: "#b45309", lineHeight: 1.5 }}>
+                  {"•  Toiture morcelée / encombrée (>30 %) — réduire la surface retenue pour le devis PV"}
+                </Text>
+              )}
+              {phys.roof_analysis.heritage_abf_risk && (
+                <Text style={{ fontSize: 7, color: "#b45309", lineHeight: 1.5 }}>
+                  {"•  Zone ABF probable — vérifier auprès de l'architecte des bâtiments de France avant dépôt de permis"}
+                </Text>
+              )}
+              {phys.roof_analysis.suspected_asbestos_risk && (
+                <Text style={{ fontSize: 7, color: "#991b1b", lineHeight: 1.5 }}>
+                  {"•  Matériau de couverture suspect (fibrociment) — diagnostic amiante obligatoire avant travaux"}
+                </Text>
+              )}
+              <Text style={{ fontSize: 6.5, color: "#a16207", marginTop: 3 }}>
+                {"Ces alertes sont basées sur l'analyse visuelle satellite — confirmation terrain requise."}
+              </Text>
+            </View>
+          )}
+
           <View style={{ marginTop: 14 }} />
 
           {/* ── §02 DIAGNOSTIC ── */}
@@ -948,6 +982,21 @@ export default function AuditPdfDocument({
             <AppRow label="Facteur orientation"     value={phys.solar_potential.orientation_factor.toFixed(3)}  note="1.000 = plein Sud optimal" />
             <AppRow label="Facteur obstruction"     value={phys.solar_potential.obstruction_factor.toFixed(3)}  note="1.000 = sans ombrage" />
             <AppRow label="Surface PV exploitable"  value={m2(phys.solar_potential.usable_surface_m2)}          note="surface x 0.85 x fact. obstruction" />
+            <AppRow
+              label="Toiture morcelee"
+              value={phys.roof_analysis.roof_fragmentation_warning ? "⚠ OUI" : "Non"}
+              note="Surface >30 % obstruée par éléments techniques"
+            />
+            <AppRow
+              label="Risque zone ABF"
+              value={phys.roof_analysis.heritage_abf_risk ? "⚠ OUI" : "Non"}
+              note="Environnement patrimonial détecté (monument, centre ancien)"
+            />
+            <AppRow
+              label="Fibrociment suspect"
+              value={phys.roof_analysis.suspected_asbestos_risk ? "⚠ OUI" : "Non"}
+              note="Texture compatible avec fibrociment — diagnostic amiante recommandé"
+            />
 
             {/* B. Sectoriels */}
             <Text style={S.subTitle}>B. PARAMETRES SECTORIELS</Text>
