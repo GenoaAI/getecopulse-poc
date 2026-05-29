@@ -777,21 +777,7 @@ export default function AuditPdfDocument({
               </View>
             </View>
 
-            {/* CAPEX — Solar */}
-            <View style={[S.actionCard, { borderColor: C.blue }]}>
-              <Text style={S.actionTitle}>Installation Solaire</Text>
-              <Text style={[S.actionSub, { marginBottom: 8 }]}>CAPEX — Autoconsommation PV</Text>
-              <ActionRow label="CAPEX estime"  value={`${fr(fin.capex_eur / 1000)} kEUR`} color={C.blue} />
-              <ActionRow label="Economie ann." value={`${fr(fin.annual_savings_eur / 1000)} kEUR/an`} />
-              <ActionRow label="Puissance crete" value={`${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`} />
-              <ActionRow label="Couverture"     value={`${fin.solar_coverage_pct} %`} />
-              <View style={S.actionRoiRow}>
-                <Text style={{ fontSize: 8, color: C.t500, marginRight: 4 }}>ROI : </Text>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.blue }}>
-                  {fin.roi_years !== null ? `${fin.roi_years} ans` : "Non calculable"}
-                </Text>
-              </View>
-            </View>
+            {/* Solar removed from this row → see full-width section below */}
 
             {/* Thermal — coming soon */}
             <View style={[S.actionCard, { borderColor: C.border, opacity: 0.6 }]}>
@@ -858,6 +844,154 @@ export default function AuditPdfDocument({
               )}
             </View>
           )}
+
+          {/* ── Installation Solaire — Pré-cadrage Dirigeant ── */}
+          <View style={{ marginTop: 12, marginBottom: 4 }}>
+
+            {/* Title bar */}
+            <View style={{
+              backgroundColor: C.blue, borderRadius: 5,
+              paddingHorizontal: 10, paddingVertical: 6, marginBottom: 9,
+              flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+            }}>
+              <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.white, letterSpacing: 0.5 }}>
+                INSTALLATION SOLAIRE — PRE-CADRAGE DIRIGEANT
+              </Text>
+              <Text style={{ fontSize: 7.5, color: "#bfdbfe" }}>
+                {`CAPEX ${fr(fin.capex_eur / 1000)} kEUR  •  Eco. ${fr(fin.annual_savings_eur / 1000)} kEUR/an  •  ${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp  •  ${fin.solar_coverage_pct} %  •  ROI ${fin.roi_years !== null ? `${fin.roi_years} ans` : "N/C"}`}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+
+              {/* Bloc 1 — Checklist pré-cadrage */}
+              <View style={{
+                flex: 1.3,
+                backgroundColor: C.bg, borderRadius: 7,
+                borderWidth: 1, borderColor: C.border, borderStyle: "solid",
+                padding: 10,
+              }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.t900, marginBottom: 2 }}>
+                  Niveau 1 — Pre-cadrage Dirigeant (3 Red Flags)
+                </Text>
+                <Text style={{ fontSize: 7, color: C.t400, marginBottom: 8, fontStyle: "italic" }}>
+                  A verifier avant toute demande de devis
+                </Text>
+
+                {/* Red Flag 1 — Toiture / Age */}
+                <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 8 }}>
+                  <View style={{ marginTop: 1.5, marginRight: 7, flexShrink: 0 }}>
+                    <Svg width={9} height={9}>
+                      <Rect x={0} y={0} width={9} height={9} stroke={C.t400} strokeWidth={1} fill="none" />
+                    </Svg>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginBottom: 2, gap: 4 }}>
+                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.t900 }}>
+                        Piege de l&apos;Age (Toiture)
+                      </Text>
+                      {phys.roof_analysis.suspected_asbestos_risk && (
+                        <View style={{ backgroundColor: "#fef2f2", borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1, borderWidth: 1, borderColor: "#fca5a5", borderStyle: "solid" }}>
+                          <Text style={{ fontSize: 6.5, color: "#dc2626" }}>{"⚠ Fibrociment detecte"}</Text>
+                        </View>
+                      )}
+                      {!phys.roof_analysis.suspected_asbestos_risk && phys.roof_analysis.roof_fragmentation_warning && (
+                        <View style={{ backgroundColor: "#fffbeb", borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1, borderWidth: 1, borderColor: "#fbbf24", borderStyle: "solid" }}>
+                          <Text style={{ fontSize: 6.5, color: "#92400e" }}>{"⚠ Toit morcele"}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.45 }}>
+                      Les panneaux durent 25 ans. Verifiez que l&apos;etancheite a moins de 10 ans et l&apos;absence d&apos;amiante. Refaire un toit sous des panneaux detruit le ROI.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Red Flag 2 — Distance / Cuivre */}
+                <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 8 }}>
+                  <View style={{ marginTop: 1.5, marginRight: 7, flexShrink: 0 }}>
+                    <Svg width={9} height={9}>
+                      <Rect x={0} y={0} width={9} height={9} stroke={C.t400} strokeWidth={1} fill="none" />
+                    </Svg>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.t900, marginBottom: 2 }}>
+                      Piege du Cuivre (Distance TGBT)
+                    </Text>
+                    <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.45 }}>
+                      Reperez la distance entre votre toiture et le TGBT (Tableau Electrique). Au-dela de 50 m, les surcouts de raccordement et de tranchees explosent.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Red Flag 3 — ABF / Administratif */}
+                <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                  <View style={{ marginTop: 1.5, marginRight: 7, flexShrink: 0 }}>
+                    <Svg width={9} height={9}>
+                      <Rect x={0} y={0} width={9} height={9} stroke={C.t400} strokeWidth={1} fill="none" />
+                    </Svg>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginBottom: 2, gap: 4 }}>
+                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.t900 }}>
+                        Piege Administratif (ABF / Bail)
+                      </Text>
+                      {phys.roof_analysis.heritage_abf_risk && (
+                        <View style={{ backgroundColor: "#fffbeb", borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1, borderWidth: 1, borderColor: "#fbbf24", borderStyle: "solid" }}>
+                          <Text style={{ fontSize: 6.5, color: "#92400e" }}>{"⚠ Zone ABF detectee"}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.45 }}>
+                      Verifiez si votre batiment est en zone classee (Architecte des Batiments de France) ou si votre bail locatif est trop court pour amortir l&apos;investissement.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Bloc 2 — CTA Étude certifiée */}
+              <View style={{
+                flex: 1,
+                backgroundColor: "#eff6ff",
+                borderRadius: 7,
+                borderWidth: 1, borderColor: "#bfdbfe", borderStyle: "solid",
+                padding: 10,
+              }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.blue, marginBottom: 5 }}>
+                  Niveau 2 — Etude Technique Certifiee (RGE)
+                </Text>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.t700, marginBottom: 5 }}>
+                  Passez au chiffrage avec notre reseau certifie
+                </Text>
+                <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.5, marginBottom: 8 }}>
+                  Le solaire industriel exige une expertise RGE stricte. Un installateur non-certifie invalide les aides MaPrimeRenov&apos; et CEE. Notre reseau de partenaires vous garantit un dossier conforme et un chiffrage fiable.
+                </Text>
+
+                {/* CTA encadre */}
+                <View style={{
+                  backgroundColor: C.white, borderRadius: 5, padding: 8,
+                  borderWidth: 1, borderColor: "#bfdbfe", borderStyle: "solid",
+                  borderLeftWidth: 3, borderLeftColor: C.blue, borderLeftStyle: "solid",
+                }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.blue, marginBottom: 3 }}>
+                    Verifier ma faisabilite (gratuit)
+                  </Text>
+                  <Text style={{ fontSize: 7, color: C.t500, lineHeight: 1.4 }}>
+                    Connectez-vous sur getecopulse.com et utilisez le bouton &quot;Verifier ma faisabilite avec un installateur partenaire&quot; disponible dans votre espace web.
+                  </Text>
+                </View>
+
+                {/* ROI row */}
+                <View style={{ borderTopWidth: 1, borderTopColor: "#bfdbfe", borderTopStyle: "solid", paddingTop: 6, marginTop: 10, flexDirection: "row" }}>
+                  <Text style={{ fontSize: 8, color: C.t500, marginRight: 4 }}>ROI : </Text>
+                  <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: C.blue }}>
+                    {fin.roi_years !== null ? `${fin.roi_years} ans` : "Non calculable"}
+                  </Text>
+                </View>
+              </View>
+
+            </View>
+          </View>
 
           {/* ── Plan d'action Talon de Nuit ── */}
           <View style={{ marginTop: 14, marginBottom: 4 }}>

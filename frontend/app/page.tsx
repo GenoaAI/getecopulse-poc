@@ -272,6 +272,8 @@ export default function Home() {
 
   // Sprint W — IoT lead gen CTA (état local ; Sprint E ajoutera le webhook)
   const [iotContactRequested, setIotContactRequested] = useState(false);
+  // Sprint W — Solar installer CTA (état local ; Sprint E ajoutera le webhook)
+  const [solarContactRequested, setSolarContactRequested] = useState(false);
 
   // Purchase / unlock state
   const [isPurchased,      setIsPurchased]      = useState(false);
@@ -1223,35 +1225,153 @@ export default function Home() {
                       )}
 
                       {/* Card 2 — Installation Solaire */}
-                      <SolutionCard
-                        variant="secondary"
-                        icon={Sun}
-                        title="Installation Solaire"
-                        description="Autoconsommation — réduction de la facture"
-                        metrics={[
-                          {
-                            label: "CAPEX estimé",
-                            value: `${(fin.capex_eur / 1000).toFixed(0)} k€`,
-                          },
-                          {
-                            label: "Économie annuelle",
-                            value: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an`,
-                          },
-                          {
-                            label: "Puissance crête",
-                            value: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`,
-                          },
-                          {
-                            label: "Couverture",
-                            value: `${fin.solar_coverage_pct} %`,
-                          },
-                        ]}
-                        roi={
-                          fin.roi_years !== null
-                            ? `${fin.roi_years} ans`
-                            : "Non calculable"
-                        }
-                      />
+                      {isPurchased ? (
+                        <div className="relative bg-[#1e293b] border-2 border-blue-500/25 rounded-2xl flex flex-col h-full">
+
+                          {/* Header */}
+                          <div className="flex items-center gap-2.5 px-4 pt-5 pb-3">
+                            <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                              <Sun className="w-4 h-4 text-blue-400" />
+                            </div>
+                            <div>
+                              <h3 className="text-white font-semibold text-sm">Installation Solaire</h3>
+                              <p className="text-slate-400 text-xs">CAPEX — Autoconsommation PV</p>
+                            </div>
+                          </div>
+
+                          {/* Métriques 2×2 */}
+                          <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+                            {[
+                              { lbl: "CAPEX estimé",      val: `${(fin.capex_eur / 1000).toFixed(0)} k€`,                 hi: false },
+                              { lbl: "Économie annuelle", val: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an`,      hi: true  },
+                              { lbl: "Puissance crête",   val: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`,   hi: false },
+                              { lbl: "Couverture",        val: `${fin.solar_coverage_pct} %`,                              hi: false },
+                            ].map(({ lbl, val, hi }) => (
+                              <div key={lbl} className="bg-[#0f172a] rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-slate-400 mb-0.5 uppercase tracking-wider">{lbl}</p>
+                                <p className={`text-sm font-bold ${hi ? "text-blue-400" : "text-white"}`}>{val}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* ── Niveau 1 : Checklist pré-cadrage dirigeant ── */}
+                          <div className="mx-4 mb-3 rounded-xl bg-[#0f172a] border border-blue-500/15 p-3">
+                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2.5">
+                              Niveau 1 — Pré-cadrage Dirigeant (3 Red Flags)
+                            </p>
+                            <div className="space-y-3">
+                              {/* Red Flag 1 — Toiture / Âge */}
+                              <div className="flex items-start gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                                <div>
+                                  <p className="text-xs text-slate-300 leading-snug">
+                                    <span className="font-semibold text-white">Piège de l&apos;Âge (Toiture)</span>
+                                    {phys.roof_analysis.suspected_asbestos_risk && (
+                                      <span className="ml-1.5 inline-flex items-center gap-1 text-[10px]
+                                                       bg-red-900/30 border border-red-500/40 text-red-300
+                                                       px-1.5 py-0.5 rounded align-middle">
+                                        <AlertCircle className="w-2.5 h-2.5 inline" />
+                                        Fibrociment détecté
+                                      </span>
+                                    )}
+                                    {!phys.roof_analysis.suspected_asbestos_risk && phys.roof_analysis.roof_fragmentation_warning && (
+                                      <span className="ml-1.5 inline-flex items-center gap-1 text-[10px]
+                                                       bg-amber-900/30 border border-amber-500/40 text-amber-300
+                                                       px-1.5 py-0.5 rounded align-middle">
+                                        <AlertTriangle className="w-2.5 h-2.5 inline" />
+                                        Toit morcelé
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                                    Les panneaux durent 25 ans. Vérifiez que l&apos;étanchéité a moins de 10 ans et l&apos;absence d&apos;amiante. Refaire un toit sous des panneaux détruit le ROI.
+                                  </p>
+                                </div>
+                              </div>
+                              {/* Red Flag 2 — Distance / Cuivre */}
+                              <div className="flex items-start gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                                <div>
+                                  <p className="text-xs font-semibold text-white">Piège du Cuivre (Distance)</p>
+                                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                                    Repérez la distance entre votre toiture et le TGBT. Au-delà de 50&nbsp;m, les surcoûts de raccordement et de tranchées explosent.
+                                  </p>
+                                </div>
+                              </div>
+                              {/* Red Flag 3 — ABF / Administratif */}
+                              <div className="flex items-start gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                                <div>
+                                  <p className="text-xs text-slate-300 leading-snug">
+                                    <span className="font-semibold text-white">Piège Administratif (ABF)</span>
+                                    {phys.roof_analysis.heritage_abf_risk && (
+                                      <span className="ml-1.5 inline-flex items-center gap-1 text-[10px]
+                                                       bg-amber-900/30 border border-amber-500/40 text-amber-300
+                                                       px-1.5 py-0.5 rounded align-middle">
+                                        <AlertTriangle className="w-2.5 h-2.5 inline" />
+                                        Zone ABF détectée
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                                    Vérifiez si votre bâtiment est en zone classée (ABF) ou si votre bail est trop court pour amortir l&apos;investissement.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ── Niveau 2 : Étude Technique Certifiée ── */}
+                          <div className="mx-4 mb-4 rounded-xl bg-blue-900/15 border border-blue-500/30 p-3">
+                            <p className="text-[10px] font-bold text-blue-300 uppercase tracking-wider mb-1.5">
+                              Niveau 2 — Étude Technique Certifiée (RGE)
+                            </p>
+                            <p className="text-xs text-slate-400 leading-relaxed mb-2.5">
+                              Passez au chiffrage avec notre réseau certifié. Le solaire industriel exige une expertise RGE stricte — un installateur non-certifié invalide les aides MaPrimeRénov&apos; et CEE.
+                            </p>
+                            {solarContactRequested ? (
+                              <div className="flex items-center gap-2 text-xs text-blue-400
+                                              bg-blue-900/15 rounded-lg px-3 py-2 border border-blue-500/20">
+                                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                                Demande enregistrée — un expert RGE vous contactera sous 48&nbsp;h.
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setSolarContactRequested(true)}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg
+                                           text-xs font-semibold text-white bg-blue-600/70 border border-blue-500/50
+                                           hover:bg-blue-600 transition-colors"
+                              >
+                                <Sun className="w-3.5 h-3.5 shrink-0" />
+                                Vérifier ma faisabilité avec un installateur partenaire (Gratuit)
+                              </button>
+                            )}
+                          </div>
+
+                          {/* ROI footer */}
+                          <div className="flex items-center gap-2 text-xs text-slate-500
+                                          border-t border-slate-700/50 px-4 py-3 mt-auto">
+                            <CheckCircle className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+                            <span>ROI estimé : <span className="font-medium text-blue-400">
+                              {fin.roi_years !== null ? `${fin.roi_years} ans` : "Non calculable"}
+                            </span></span>
+                          </div>
+                        </div>
+                      ) : (
+                        <SolutionCard
+                          variant="secondary"
+                          icon={Sun}
+                          title="Installation Solaire"
+                          description="Autoconsommation — réduction de la facture"
+                          metrics={[
+                            { label: "CAPEX estimé",      value: `${(fin.capex_eur / 1000).toFixed(0)} k€` },
+                            { label: "Économie annuelle", value: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an` },
+                            { label: "Puissance crête",   value: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp` },
+                            { label: "Couverture",        value: `${fin.solar_coverage_pct} %` },
+                          ]}
+                          roi={fin.roi_years !== null ? `${fin.roi_years} ans` : "Non calculable"}
+                        />
+                      )}
                     </div>
 
                     {/* Lock overlay — covers cols 1+2 */}
