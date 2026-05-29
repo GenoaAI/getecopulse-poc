@@ -1024,7 +1024,11 @@ export default function Home() {
             <SectionHeading
               number="03"
               title="Pistes d'Économies & Scénarios"
-              subtitle="Trois leviers d'action classés par facilité de mise en œuvre"
+              subtitle={
+                realDiag && peakKw !== null && peakKw > 0
+                  ? "Leviers d'action classés par facilité de mise en œuvre — dont un levier tarifaire sans investissement"
+                  : "Trois leviers d'action classés par facilité de mise en œuvre"
+              }
             />
 
             {loading && !audit ? (
@@ -1034,314 +1038,361 @@ export default function Home() {
                 <SkeletonBlock h="h-64" />
               </div>
             ) : fin && diag && phys ? (
-              /* ── Wrapper: relative so the lock overlay can be absolute ── */
-              <div className="relative">
+              <>
+                {/* ── Leviers 1-3 : grille verrouillée jusqu'au paiement ── */}
+                <div className="relative">
+                  <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-300
+                                   ${!isPurchased ? "blur-sm pointer-events-none select-none" : ""}`}>
 
-                {/* Cards grid — blurred when locked */}
-                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-300
-                                 ${!isPurchased ? "blur-sm pointer-events-none select-none" : ""}`}>
+                    {/* Card 1 — Effacement OPEX */}
+                    <SolutionCard
+                      variant="primary"
+                      badge="PRIORITAIRE"
+                      icon={Moon}
+                      title="Effacement Talon de Nuit"
+                      description="Actions OPEX — sans investissement lourd"
+                      metrics={[
+                        {
+                          label: "Économie potentielle",
+                          value: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an`,
+                        },
+                        {
+                          label: "Gaspillage ciblé",
+                          value: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an`,
+                        },
+                        {
+                          label: "Talon nocturne",
+                          value: `${Math.round(diag.night_talon_pct * 100)} %`,
+                        },
+                        {
+                          label: "Investissement",
+                          value: `${diag.opex_capex_eur.toLocaleString("fr-FR")} €`,
+                        },
+                      ]}
+                      roi={diag.opex_roi}
+                    />
 
-                  {/* Card 1 — Effacement OPEX */}
-                  <SolutionCard
-                    variant="primary"
-                    badge="PRIORITAIRE"
-                    icon={Moon}
-                    title="Effacement Talon de Nuit"
-                    description="Actions OPEX — sans investissement lourd"
-                    metrics={[
-                      {
-                        label: "Économie potentielle",
-                        value: `${diag.opex_savings_eur_per_year.toLocaleString("fr-FR")} €/an`,
-                      },
-                      {
-                        label: "Gaspillage ciblé",
-                        value: `${(diag.estimated_waste_kwh / 1000).toFixed(0)} MWh/an`,
-                      },
-                      {
-                        label: "Talon nocturne",
-                        value: `${Math.round(diag.night_talon_pct * 100)} %`,
-                      },
-                      {
-                        label: "Investissement",
-                        value: `${diag.opex_capex_eur.toLocaleString("fr-FR")} €`,
-                      },
-                    ]}
-                    roi={diag.opex_roi}
-                  />
+                    {/* Card 2 — Solaire CAPEX */}
+                    <SolutionCard
+                      variant="secondary"
+                      icon={Sun}
+                      title="Installation Solaire"
+                      description="Autoconsommation — réduction de la facture"
+                      metrics={[
+                        {
+                          label: "CAPEX estimé",
+                          value: `${(fin.capex_eur / 1000).toFixed(0)} k€`,
+                        },
+                        {
+                          label: "Économie annuelle",
+                          value: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an`,
+                        },
+                        {
+                          label: "Puissance crête",
+                          value: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`,
+                        },
+                        {
+                          label: "Couverture",
+                          value: `${fin.solar_coverage_pct} %`,
+                        },
+                      ]}
+                      roi={
+                        fin.roi_years !== null
+                          ? `${fin.roi_years} ans`
+                          : "Non calculable"
+                      }
+                    />
 
-                  {/* Card 2 — Solaire CAPEX */}
-                  <SolutionCard
-                    variant="secondary"
-                    icon={Sun}
-                    title="Installation Solaire"
-                    description="Autoconsommation — réduction de la facture"
-                    metrics={[
-                      {
-                        label: "CAPEX estimé",
-                        value: `${(fin.capex_eur / 1000).toFixed(0)} k€`,
-                      },
-                      {
-                        label: "Économie annuelle",
-                        value: `${(fin.annual_savings_eur / 1000).toFixed(0)} k€/an`,
-                      },
-                      {
-                        label: "Puissance crête",
-                        value: `${phys.solar_potential.peak_power_kwp.toFixed(0)} kWp`,
-                      },
-                      {
-                        label: "Couverture",
-                        value: `${fin.solar_coverage_pct} %`,
-                      },
-                    ]}
-                    roi={
-                      fin.roi_years !== null
-                        ? `${fin.roi_years} ans`
-                        : "Non calculable"
-                    }
-                  />
+                    {/* Card 3 — Thermique (coming soon) */}
+                    <SolutionCard
+                      variant="disabled"
+                      icon={Flame}
+                      title="Isolation Thermique"
+                      description="Réduction des pertes par la toiture"
+                      metrics={[
+                        {
+                          label: "Risque thermique",
+                          value: phys.thermal_assessment.risk_level,
+                        },
+                        {
+                          label: "Score de perte",
+                          value: `${Math.round(phys.thermal_assessment.score * 100)} %`,
+                        },
+                      ]}
+                      roi="À venir"
+                    />
+                  </div>
 
-                  {/* Card 3 — Thermique (coming soon) */}
-                  <SolutionCard
-                    variant="disabled"
-                    icon={Flame}
-                    title="Isolation Thermique"
-                    description="Réduction des pertes par la toiture"
-                    metrics={[
-                      {
-                        label: "Risque thermique",
-                        value: phys.thermal_assessment.risk_level,
-                      },
-                      {
-                        label: "Score de perte",
-                        value: `${Math.round(phys.thermal_assessment.score * 100)} %`,
-                      },
-                    ]}
-                    roi="À venir"
-                  />
-
-                  {/* Card 4 — Optimisation Tarifaire
-                      Placeholder (locked/awaiting input) when effectivePo is not yet computed.
-                      This ensures the 4th lever is always visible in §03 at the same level
-                      as the other 3 cards — both before and after unlocking. */}
-                  {realDiag && wouldDetect && !effectivePo && (
-                    <div className="col-span-full bg-[#1e293b] border border-amber-500/20 rounded-2xl p-5">
-                      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-4">
-                        {/* Header */}
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="p-2 rounded-lg bg-amber-500/10">
-                            <Zap className="w-5 h-5 text-amber-400" />
-                          </div>
-                          <div>
-                            <h3 className="text-white font-semibold text-sm">Optimisation Tarifaire</h3>
-                            <p className="text-slate-400 text-xs">Contrat fournisseur — sans investissement</p>
-                          </div>
+                  {/* ── Lock overlay ───────────────────────────────────── */}
+                  {!isPurchased && (
+                    <div className="absolute inset-0 flex items-center justify-center
+                                    rounded-2xl bg-[#0f172a]/75 backdrop-blur-[2px]">
+                      <div className="flex flex-col items-center gap-5 text-center px-6 max-w-sm">
+                        <div className="w-12 h-12 rounded-full bg-[#1e293b] border border-slate-700
+                                        flex items-center justify-center">
+                          <Lock className="w-5 h-5 text-[#bef264]" />
                         </div>
-                        {/* Locked metrics */}
-                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          {[
-                            { label: "Sur-dimensionnement",   suffix: "kVA",  accent: false },
-                            { label: "Économie annuelle",     suffix: "€/an", accent: false },
-                            { label: "Puissance recommandée", suffix: "kVA",  accent: false },
-                            { label: "Investissement",        suffix: "€",    accent: true  },
-                          ].map((m) => (
-                            <div key={m.label} className="bg-[#0f172a] rounded-lg px-3 py-2">
-                              <p className="text-xs text-slate-400 mb-0.5">{m.label}</p>
-                              {m.accent ? (
-                                <p className="text-base font-bold text-[#bef264]">0 {m.suffix}</p>
-                              ) : (
-                                <p className="text-base font-bold text-slate-600 flex items-center gap-1">
-                                  <Lock className="w-3 h-3 shrink-0" />
-                                  <span className="select-none">— {m.suffix}</span>
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                        <div>
+                          <p className="text-white font-semibold text-sm mb-1">
+                            Plan d&apos;action complet
+                          </p>
+                          <p className="text-slate-400 text-xs leading-relaxed">
+                            Chiffres détaillés, scénarios ROI et recommandations
+                            personnalisées pour ce bâtiment.
+                          </p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs border-t border-slate-700 pt-3">
-                        {isPurchased ? (
-                          <>
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400/70 shrink-0" />
-                            <span className="text-amber-300/70">
-                              Renseignez votre puissance souscrite ci-dessous pour calculer votre économie.
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-3.5 h-3.5 text-amber-400/40 shrink-0" />
-                            <span className="text-slate-500">
-                              ROI :{" "}
-                              <span className="font-medium text-amber-400/50">
-                                Immédiat — avenant contractuel uniquement
-                              </span>
-                            </span>
-                          </>
-                        )}
+                        <button
+                          onClick={handlePurchase}
+                          disabled={checkingPurchase || !addressHash}
+                          className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold
+                                     bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
+                                     disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {checkingPurchase ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Lock className="w-4 h-4" />
+                          )}
+                          {checkingPurchase ? "Redirection…" : `Déverrouiller — ${process.env.NEXT_PUBLIC_AUDIT_PRICE ?? "29"} €`}
+                        </button>
+                        <p className="text-[10px] text-slate-600">
+                          Paiement unique · Accès permanent dans ce navigateur
+                        </p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* ── Quick Win — Optimisation Tarifaire (section payante) ── */}
-                {effectivePo && (
-                  <div className="mt-5">
-                    <div className="rounded-2xl border border-amber-500/30 bg-amber-900/10 overflow-hidden">
+                {/* ── Levier 4 : Optimisation Tarifaire ─────────────────
+                    Carte toujours visible dans §03, hors du verrou.
+                    Visible dès qu'une courbe Enedis est chargée.
+                    Saisie kVA intégrée + métriques verrouillées ou
+                    complètes + courrier clé en main (tier payant).       */}
+                {realDiag && peakKw !== null && peakKw > 0 && (
+                  <div className={`mt-4 rounded-2xl border overflow-hidden transition-colors
+                                   ${inputInvalid
+                                     ? "border-red-500/30 bg-red-900/5"
+                                     : (wouldDetect || effectivePo)
+                                       ? "border-amber-500/30 bg-amber-900/10"
+                                       : "border-amber-500/15 bg-[#1e293b]"
+                                   }`}>
 
-                      {/* Header */}
-                      <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20
-                                      flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span className="text-xs font-semibold text-amber-300 uppercase tracking-widest flex-1">
-                          Optimisation Tarifaire — Quick Win
-                        </span>
+                    {/* Header */}
+                    <div className={`px-5 py-3 border-b flex items-center gap-2
+                                     ${inputInvalid
+                                       ? "border-red-500/20 bg-red-900/10"
+                                       : "border-amber-500/15 bg-amber-500/5"}`}>
+                      <Zap className={`w-4 h-4 shrink-0 ${inputInvalid ? "text-red-400" : "text-amber-400"}`} />
+                      <span className={`text-xs font-semibold uppercase tracking-widest flex-1
+                                        ${inputInvalid ? "text-red-300" : "text-amber-300"}`}>
+                        Optimisation Tarifaire
+                      </span>
+                      {effectivePo && (
                         <span className="text-[10px] font-bold text-[#bef264] bg-[#bef264]/10
                                          border border-[#bef264]/30 rounded px-2 py-0.5 uppercase tracking-wider">
                           Économie immédiate
                         </span>
-                      </div>
+                      )}
+                      {wouldDetect && !effectivePo && !inputInvalid && (
+                        <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10
+                                         border border-amber-500/30 rounded px-2 py-0.5 uppercase tracking-wider">
+                          Détectée
+                        </span>
+                      )}
+                    </div>
 
-                      <div className="px-5 py-4 space-y-4">
+                    <div className="px-5 py-4 space-y-4">
 
-                        {/* Metrics grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-slate-700">
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Puissance souscrite</p>
-                            <p className="text-lg font-bold text-white">
-                              {effectivePo.puissance_souscrite_kva}
-                              <span className="text-xs font-normal text-slate-400 ml-1">kVA</span>
-                            </p>
-                          </div>
-                          <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-slate-700">
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Pic réel mesuré</p>
-                            <p className="text-lg font-bold text-slate-200">
-                              {effectivePo.pic_puissance_reelle_kva}
-                              <span className="text-xs font-normal text-slate-400 ml-1">kVA</span>
-                            </p>
-                          </div>
-                          <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-amber-500/20">
-                            <p className="text-[10px] text-amber-500/60 uppercase tracking-wider mb-0.5">Sur-dimensionnement</p>
-                            <p className="text-lg font-bold text-amber-300">
-                              {effectivePo.sur_capacite_kva}
-                              <span className="text-xs font-normal text-slate-400 ml-1">kVA</span>
-                            </p>
-                          </div>
-                          <div className="bg-[#0a1628] rounded-xl px-3 py-2.5 border border-[#bef264]/20">
-                            <p className="text-[10px] text-[#bef264]/60 uppercase tracking-wider mb-0.5">Économie annuelle</p>
-                            <p className="text-lg font-bold text-[#bef264]">
-                              {effectivePo.economie_abonnement_estimee_eur.toLocaleString("fr-FR")}
-                              <span className="text-xs font-normal text-slate-400 ml-1">€/an</span>
-                            </p>
-                          </div>
+                      {/* Pic réel + saisie puissance souscrite */}
+                      <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                        <div className="bg-[#0f172a] rounded-xl px-4 py-3 border border-slate-700 shrink-0">
+                          <p className="text-xs text-slate-400 mb-0.5">Pic réel mesuré</p>
+                          <p className="text-xl font-bold text-white">
+                            {Math.round((peakKw ?? 0) * 10) / 10}
+                            <span className="text-sm font-normal text-slate-400 ml-1">kVA</span>
+                          </p>
                         </div>
-
-                        {/* Recommendation */}
-                        <div className="bg-[#0f172a] rounded-xl px-4 py-3 border border-slate-700
-                                        text-xs text-slate-400 leading-relaxed">
-                          Recommandation : réduire la puissance souscrite de{" "}
-                          <span className="text-white font-semibold">{effectivePo.puissance_souscrite_kva} kVA</span>
-                          {" → "}
-                          <span className="text-[#bef264] font-semibold">{effectivePo.puissance_recommandee_kva} kVA</span>
-                          {" "}(pic mesuré + 10 % de marge de sécurité). Sans investissement — un simple avenant à votre contrat fournisseur suffit.
-                        </div>
-
-                        {/* Email template — turnkey letter */}
-                        <div className="rounded-xl border border-blue-500/20 bg-blue-900/5 overflow-hidden">
-                          <div className="flex items-center gap-2 px-4 py-2.5
-                                          bg-blue-900/20 border-b border-blue-500/20">
-                            <span className="text-xs font-semibold text-blue-300 flex-1">
-                              Courrier clé en main — à envoyer à votre fournisseur d&apos;énergie
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-slate-300 mb-1">
+                            Puissance souscrite actuelle
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={puissanceSouscritePage}
+                              onChange={(e) => setPuissanceSouscritePage(e.target.value)}
+                              placeholder="ex : 250, 300…"
+                              className={`w-full pl-3 pr-12 py-2.5 rounded-xl bg-slate-800 text-sm text-white
+                                         placeholder:text-slate-500 focus:outline-none border transition-colors
+                                         ${inputInvalid
+                                           ? "border-red-500/50 focus:ring-1 focus:ring-red-500/50"
+                                           : "border-slate-700 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"}`}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">
+                              kVA
                             </span>
-                            <button
-                              onClick={() => {
-                                const txt = `Bonjour,\n\nSuite à un audit de nos courbes de charge, nous constatons que notre pic de puissance appelé sur les 12 derniers mois est de ${effectivePo.pic_puissance_reelle_kva} kVA.\n\nNous souhaitons par conséquent abaisser notre puissance souscrite actuelle à ${effectivePo.puissance_recommandee_kva} kVA dès que possible.\n\nMerci de nous transmettre l'avenant correspondant.\n\nCordialement,`;
-                                navigator.clipboard.writeText(txt).then(() => {
-                                  setEmailCopied(true);
-                                  setTimeout(() => setEmailCopied(false), 2000);
-                                });
-                              }}
-                              className="flex items-center gap-1.5 text-xs text-blue-400
-                                         hover:text-blue-300 border border-blue-500/30
-                                         hover:border-blue-400/50 rounded-lg px-2.5 py-1 transition-colors"
-                            >
-                              {emailCopied ? (
-                                <><CheckCircle className="w-3 h-3 text-emerald-400" /> Copié !</>
-                              ) : (
-                                <><Copy className="w-3 h-3" /> Copier</>
-                              )}
-                            </button>
                           </div>
-                          <div className="px-4 py-3 font-mono text-xs text-slate-300 leading-relaxed space-y-2">
-                            <p className="text-slate-500">Objet : Demande de révision de puissance souscrite</p>
-                            <div className="h-px bg-slate-700/50" />
-                            <p>Bonjour,</p>
-                            <p>
-                              Suite à un audit de nos courbes de charge, nous constatons que notre pic de
-                              puissance appelé sur les 12 derniers mois est de{" "}
-                              <span className="text-amber-300 font-semibold">
-                                {effectivePo.pic_puissance_reelle_kva} kVA
-                              </span>.
+                          {inputInvalid && (
+                            <p className="mt-1 text-xs text-red-400">
+                              Valeur inférieure au pic mesuré ({Math.round((peakKw ?? 0) * 10) / 10} kVA) — un contrat ne peut pas être inférieur à la consommation réelle.
                             </p>
-                            <p>
-                              Nous souhaitons par conséquent abaisser notre puissance souscrite actuelle
-                              à{" "}
-                              <span className="text-[#bef264] font-semibold">
-                                {effectivePo.puissance_recommandee_kva} kVA
-                              </span>{" "}
-                              dès que possible.
-                            </p>
-                            <p>Merci de nous transmettre l&apos;avenant correspondant.</p>
-                            <p>Cordialement,</p>
-                          </div>
+                          )}
                         </div>
-
                       </div>
+
+                      {/* Hint — no value entered yet */}
+                      {!(psFloat > 0) && !inputInvalid && (
+                        <p className="text-xs text-slate-500 italic">
+                          Renseignez votre puissance souscrite pour analyser votre contrat d&apos;abonnement.
+                        </p>
+                      )}
+
+                      {/* Contract correctly sized */}
+                      {psFloat > 0 && !wouldDetect && !inputInvalid && (
+                        <div className="flex items-center gap-2 text-sm text-emerald-400
+                                        bg-emerald-900/20 rounded-xl px-4 py-3 border border-emerald-500/20">
+                          <CheckCircle className="w-4 h-4 shrink-0" />
+                          <span>
+                            Contrat correctement dimensionné — marge de{" "}
+                            <span className="font-semibold">
+                              {Math.round((psFloat / (Math.round((peakKw ?? 0) * 10) / 10) - 1) * 100)} %
+                            </span>{" "}
+                            au-dessus du pic réel. Aucune action requise.
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Over-dimensioning detected */}
+                      {wouldDetect && !inputInvalid && (
+                        <>
+                          {/* Metrics */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-slate-700">
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Puissance souscrite</p>
+                              <p className="text-lg font-bold text-white">
+                                {psFloat} <span className="text-xs font-normal text-slate-400">kVA</span>
+                              </p>
+                            </div>
+                            <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-amber-500/20">
+                              <p className="text-[10px] text-amber-500/60 uppercase tracking-wider mb-0.5">Sur-dimensionnement</p>
+                              {effectivePo ? (
+                                <p className="text-lg font-bold text-amber-300">
+                                  {effectivePo.sur_capacite_kva}{" "}
+                                  <span className="text-xs font-normal text-slate-400">kVA</span>
+                                </p>
+                              ) : (
+                                <p className="text-lg font-bold text-slate-600 flex items-center gap-1">
+                                  <Lock className="w-3 h-3 shrink-0" /><span className="select-none">— kVA</span>
+                                </p>
+                              )}
+                            </div>
+                            <div className="bg-[#0a1628] rounded-xl px-3 py-2.5 border border-[#bef264]/15">
+                              <p className="text-[10px] text-[#bef264]/50 uppercase tracking-wider mb-0.5">Économie annuelle</p>
+                              {effectivePo ? (
+                                <p className="text-lg font-bold text-[#bef264]">
+                                  {effectivePo.economie_abonnement_estimee_eur.toLocaleString("fr-FR")}{" "}
+                                  <span className="text-xs font-normal text-slate-400">€/an</span>
+                                </p>
+                              ) : (
+                                <p className="text-lg font-bold text-slate-600 select-none blur-sm">●●●● €/an</p>
+                              )}
+                            </div>
+                            <div className="bg-[#1e293b] rounded-xl px-3 py-2.5 border border-slate-700">
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Investissement</p>
+                              <p className="text-lg font-bold text-[#bef264]">
+                                0 <span className="text-xs font-normal text-slate-400">€</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Paid: recommendation + email template */}
+                          {effectivePo && (
+                            <>
+                              <div className="bg-[#0f172a] rounded-xl px-4 py-3 border border-slate-700
+                                              text-xs text-slate-400 leading-relaxed">
+                                Recommandation : réduire la puissance souscrite de{" "}
+                                <span className="text-white font-semibold">{effectivePo.puissance_souscrite_kva} kVA</span>
+                                {" → "}
+                                <span className="text-[#bef264] font-semibold">{effectivePo.puissance_recommandee_kva} kVA</span>
+                                {" "}(pic + 10 % de marge). Sans investissement — un simple avenant suffit.
+                              </div>
+
+                              <div className="rounded-xl border border-blue-500/20 bg-blue-900/5 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-2.5
+                                                bg-blue-900/20 border-b border-blue-500/20">
+                                  <span className="text-xs font-semibold text-blue-300 flex-1">
+                                    Courrier clé en main — à envoyer à votre fournisseur d&apos;énergie
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      const txt = `Bonjour,\n\nSuite à un audit de nos courbes de charge, nous constatons que notre pic de puissance appelé sur les 12 derniers mois est de ${effectivePo.pic_puissance_reelle_kva} kVA.\n\nNous souhaitons par conséquent abaisser notre puissance souscrite actuelle à ${effectivePo.puissance_recommandee_kva} kVA dès que possible.\n\nMerci de nous transmettre l'avenant correspondant.\n\nCordialement,`;
+                                      navigator.clipboard.writeText(txt).then(() => {
+                                        setEmailCopied(true);
+                                        setTimeout(() => setEmailCopied(false), 2000);
+                                      });
+                                    }}
+                                    className="flex items-center gap-1.5 text-xs text-blue-400
+                                               hover:text-blue-300 border border-blue-500/30
+                                               hover:border-blue-400/50 rounded-lg px-2.5 py-1 transition-colors"
+                                  >
+                                    {emailCopied ? (
+                                      <><CheckCircle className="w-3 h-3 text-emerald-400" /> Copié !</>
+                                    ) : (
+                                      <><Copy className="w-3 h-3" /> Copier</>
+                                    )}
+                                  </button>
+                                </div>
+                                <div className="px-4 py-3 font-mono text-xs text-slate-300 leading-relaxed space-y-2">
+                                  <p className="text-slate-500">Objet : Demande de révision de puissance souscrite</p>
+                                  <div className="h-px bg-slate-700/50" />
+                                  <p>Bonjour,</p>
+                                  <p>Suite à un audit de nos courbes de charge, nous constatons que notre pic de puissance appelé sur les 12 derniers mois est de{" "}<span className="text-amber-300 font-semibold">{effectivePo.pic_puissance_reelle_kva} kVA</span>.</p>
+                                  <p>Nous souhaitons par conséquent abaisser notre puissance souscrite actuelle à{" "}<span className="text-[#bef264] font-semibold">{effectivePo.puissance_recommandee_kva} kVA</span>{" "}dès que possible.</p>
+                                  <p>Merci de nous transmettre l&apos;avenant correspondant.</p>
+                                  <p>Cordialement,</p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Not paid: CTA */}
+                          {!isPurchased && (
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3
+                                            bg-[#0f172a] rounded-xl px-4 py-3 border border-slate-700">
+                              <p className="flex-1 text-xs text-slate-400 leading-relaxed">
+                                Déverrouillez le Plan d&apos;Action complet pour révéler le montant de l&apos;économie
+                                et accéder au courrier clé en main.
+                              </p>
+                              <button
+                                onClick={handlePurchase}
+                                disabled={checkingPurchase || !addressHash}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold
+                                           bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
+                                           disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
+                              >
+                                {checkingPurchase ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                                {checkingPurchase ? "Redirection…" : `Déverrouiller — ${process.env.NEXT_PUBLIC_AUDIT_PRICE ?? "29"} €`}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center gap-2 text-xs text-slate-500
+                                    border-t border-slate-700/50 px-5 py-2.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-amber-400/40 shrink-0" />
+                      <span>ROI :{" "}
+                        <span className="font-medium text-amber-400/50">Immédiat — avenant contractuel uniquement</span>
+                      </span>
                     </div>
                   </div>
                 )}
-
-                {/* ── Lock overlay — shown when not purchased ────────── */}
-                {!isPurchased && (
-                  <div className="absolute inset-0 flex items-center justify-center
-                                  rounded-2xl bg-[#0f172a]/75 backdrop-blur-[2px]">
-                    <div className="flex flex-col items-center gap-5 text-center px-6 max-w-sm">
-                      <div className="w-12 h-12 rounded-full bg-[#1e293b] border border-slate-700
-                                      flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-[#bef264]" />
-                      </div>
-                      <div>
-                        <p className="text-white font-semibold text-sm mb-1">
-                          Plan d&apos;action complet
-                        </p>
-                        <p className="text-slate-400 text-xs leading-relaxed">
-                          {realDiag && wouldDetect
-                            ? <>4 leviers d&apos;économies identifiés — dont une{" "}
-                                <span className="text-amber-300/80">optimisation tarifaire immédiate</span>{" "}
-                                sur votre abonnement.</>
-                            : "Chiffres détaillés, scénarios ROI et recommandations personnalisées pour ce bâtiment."
-                          }
-                        </p>
-                      </div>
-                      <button
-                        onClick={handlePurchase}
-                        disabled={checkingPurchase || !addressHash}
-                        className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold
-                                   bg-[#bef264] text-slate-900 hover:bg-[#a3e635] transition-colors
-                                   disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {checkingPurchase ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Lock className="w-4 h-4" />
-                        )}
-                        {checkingPurchase ? "Redirection…" : `Déverrouiller — ${process.env.NEXT_PUBLIC_AUDIT_PRICE ?? "29"} €`}
-                      </button>
-                      <p className="text-[10px] text-slate-600">
-                        Paiement unique · Accès permanent dans ce navigateur
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              </>
             ) : null}
           </section>
 
@@ -1361,46 +1412,6 @@ export default function Home() {
                       {(realDiag as { days_measured?: number }).days_measured ?? "?"} jours mesurés
                     </span>
                   </span>
-                </div>
-              )}
-
-              {/* ── Bandeau saisie puissance souscrite ── */}
-              {realDiag && peakKw !== null && peakKw > 0 && (
-                <div className={`mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3
-                                rounded-xl border px-4 py-3 transition-colors
-                                ${inputInvalid
-                                  ? "border-red-500/30 bg-red-900/10"
-                                  : "border-amber-500/20 bg-amber-900/5"}`}>
-                  <Zap className={`w-4 h-4 shrink-0 mt-0.5 sm:mt-0 ${inputInvalid ? "text-red-400" : "text-amber-400"}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium mb-0.5 ${inputInvalid ? "text-red-300" : "text-amber-200"}`}>
-                      {inputInvalid ? "Valeur incorrecte — vérifiez votre saisie" : "Optimisation tarifaire — renseignez votre puissance souscrite"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {inputInvalid
-                        ? <>La puissance saisie (<span className="text-red-300 font-medium">{psFloat} kVA</span>) est inférieure au pic réel mesuré (<span className="text-slate-300 font-medium">{Math.round((peakKw ?? 0) * 10) / 10} kVA</span>). Un contrat ne peut pas être inférieur à la consommation réelle.</>
-                        : <>Pic réel mesuré : <span className="text-slate-300 font-medium">{Math.round((peakKw ?? 0) * 10) / 10} kVA</span>. Indiquez votre puissance contractuelle pour détecter un éventuel sur-dimensionnement.</>
-                      }
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={puissanceSouscritePage}
-                        onChange={(e) => setPuissanceSouscritePage(e.target.value)}
-                        placeholder="ex: 250"
-                        className={`w-28 pl-3 pr-10 py-1.5 rounded-lg bg-slate-800 text-sm text-white
-                                   placeholder:text-slate-500 focus:outline-none border transition-colors
-                                   ${inputInvalid
-                                     ? "border-red-500/50 focus:ring-1 focus:ring-red-500/50"
-                                     : "border-slate-700 focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50"}`}
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 pointer-events-none">kVA</span>
-                    </div>
-                  </div>
                 </div>
               )}
 
